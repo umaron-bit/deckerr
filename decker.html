@@ -1,0 +1,2438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Decker - Professional Presentation Suite</title>
+  
+  <!-- Google Fonts & Tailwind CDN for Workspace Aesthetics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- High-Fidelity Rendering and Document Conversion Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+  <!-- Interactive Data-Visualization & 3D WebGL Simulation Engines -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Playfair Display"', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Absolute Layout Constraints mimicking Google Slides UI */
+    .slide-canvas-ratio {
+      aspect-ratio: 16 / 9;
+    }
+    
+    /* Scrollbar Aesthetics */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(107, 114, 128, 0.7);
+    }
+    
+    /* Drag & Drop Reordering Highlight Indicator */
+    .drag-over {
+      border: 2px dashed #f59e0b !important;
+      transform: scale(0.96);
+      opacity: 0.85;
+      transition: all 0.15s ease-in-out;
+    }
+    
+    /* Presentation Laser Pointer */
+    .laser-pointer-dot {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: #ff2a2a;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 15px 6px rgba(255, 42, 42, 0.7), 0 0 4px 1px #ffffff;
+      pointer-events: none;
+      z-index: 10000;
+      display: none;
+    }
+    
+    /* Spotlight Mode Mask Layer */
+    .spotlight-mask-layer {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 9990;
+      display: none;
+      background: radial-gradient(circle 140px at 0px 0px, transparent 100%, rgba(10, 10, 12, 0.88) 100%);
+    }
+
+    /* ContentEditable Custom placeholder hints */
+    [contenteditable="true"]:empty:before {
+      content: attr(data-placeholder);
+      color: #9ca3af;
+      font-style: italic;
+    }
+    [contenteditable="true"]:focus {
+      outline: 2px dashed #3b82f6;
+      outline-offset: 4px;
+    }
+
+    /* Proportional Font Scales (75% to 150%) */
+    .scale-font-75 .text-5xl, .scale-font-75 h1 { font-size: 2.25rem !important; }
+    .scale-font-75 .text-4xl { font-size: 1.7rem !important; }
+    .scale-font-75 .text-3xl, .scale-font-75 h2 { font-size: 1.4rem !important; }
+    .scale-font-75 .text-2xl, .scale-font-75 h3 { font-size: 1.1rem !important; }
+    .scale-font-75 .text-base, .scale-font-75 p { font-size: 0.85rem !important; }
+    .scale-font-75 .text-sm { font-size: 0.75rem !important; }
+    .scale-font-75 .text-xs, .scale-font-75 li { font-size: 0.65rem !important; }
+
+    .scale-font-90 .text-5xl, .scale-font-90 h1 { font-size: 2.7rem !important; }
+    .scale-font-90 .text-4xl { font-size: 2.0rem !important; }
+    .scale-font-90 .text-3xl, .scale-font-90 h2 { font-size: 1.68rem !important; }
+    .scale-font-90 .text-2xl, .scale-font-90 h3 { font-size: 1.35rem !important; }
+    .scale-font-90 .text-base, .scale-font-90 p { font-size: 0.9rem !important; }
+    .scale-font-90 .text-sm { font-size: 0.8rem !important; }
+    .scale-font-90 .text-xs, .scale-font-90 li { font-size: 0.7rem !important; }
+
+    .scale-font-115 .text-5xl, .scale-font-115 h1 { font-size: 3.45rem !important; }
+    .scale-font-115 .text-4xl { font-size: 2.58rem !important; }
+    .scale-font-115 .text-3xl, .scale-font-115 h2 { font-size: 2.15rem !important; }
+    .scale-font-115 .text-2xl, .scale-font-115 h3 { font-size: 1.72rem !important; }
+    .scale-font-115 .text-base, .scale-font-115 p { font-size: 1.15rem !important; }
+    .scale-font-115 .text-sm { font-size: 1.0rem !important; }
+    .scale-font-115 .text-xs, .scale-font-115 li { font-size: 0.86rem !important; }
+
+    .scale-font-130 .text-5xl, .scale-font-130 h1 { font-size: 3.9rem !important; }
+    .scale-font-130 .text-4xl { font-size: 2.92rem !important; }
+    .scale-font-130 .text-3xl, .scale-font-130 h2 { font-size: 2.43rem !important; }
+    .scale-font-130 .text-2xl, .scale-font-130 h3 { font-size: 1.95rem !important; }
+    .scale-font-130 .text-base, .scale-font-130 p { font-size: 1.3rem !important; }
+    .scale-font-130 .text-sm { font-size: 1.13rem !important; }
+    .scale-font-130 .text-xs, .scale-font-130 li { font-size: 0.97rem !important; }
+
+    .scale-font-150 .text-5xl, .scale-font-150 h1 { font-size: 4.5rem !important; }
+    .scale-font-150 .text-4xl { font-size: 3.37rem !important; }
+    .scale-font-150 .text-3xl, .scale-font-150 h2 { font-size: 2.8rem !important; }
+    .scale-font-150 .text-2xl, .scale-font-150 h3 { font-size: 2.25rem !important; }
+    .scale-font-150 .text-base, .scale-font-150 p { font-size: 1.5rem !important; }
+    .scale-font-150 .text-sm { font-size: 1.3rem !important; }
+    .scale-font-150 .text-xs, .scale-font-150 li { font-size: 1.12rem !important; }
+
+    /* ThreeJS Simulation Canvas Wrapper Styling */
+    .simulation-canvas-container canvas {
+      border-radius: 8px;
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-height-screen select-none overflow-x-hidden">
+
+  <!-- Custom Alert, Toast and Modal Systems to fulfill guardrails (No alert/confirm) -->
+  <div id="toast-container" class="fixed top-5 right-5 z-[99999] flex flex-col gap-2 pointer-events-none"></div>
+
+  <div id="custom-confirm-modal" class="hidden fixed inset-0 z-[99998] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 m-4 border border-slate-100 transform transition-transform scale-100">
+      <h3 class="text-lg font-bold text-slate-900" id="confirm-title">Are you sure?</h3>
+      <p class="text-sm text-slate-500 mt-2" id="confirm-msg">This operation cannot be undone.</p>
+      <div class="flex justify-end gap-3 mt-6">
+        <button id="confirm-cancel-btn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors">Cancel</button>
+        <button id="confirm-ok-btn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-lg transition-colors">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DASHBOARD VIEW ==================== -->
+  <div id="view-dashboard" class="block">
+    <!-- Decker Workspace Style Top Header -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      <div class="flex items-center gap-3">
+        <div class="bg-amber-500 text-white p-2.5 rounded-lg shadow-sm">
+          <i class="fa-solid fa-display text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-slate-900">Decker</h1>
+          <p class="text-xs text-slate-500">Interactive Presentation Suite</p>
+        </div>
+      </div>
+      
+      <!-- Search Mockup -->
+      <div class="hidden md:flex items-center bg-slate-100 rounded-full px-4 py-2 w-96">
+        <i class="fa-solid fa-magnifying-glass text-slate-400 mr-2.5"></i>
+        <input type="text" placeholder="Search presentations..." class="bg-transparent border-none text-sm w-full outline-none text-slate-700">
+      </div>
+
+      <!-- Quick profile button mockup -->
+      <div class="flex items-center gap-4">
+        <span class="text-xs text-slate-400 hidden lg:inline">Browser Engine Storage Active</span>
+        <div class="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-inner">
+          DK
+        </div>
+      </div>
+    </header>
+
+    <!-- Template Gallery Section -->
+    <section class="bg-slate-100/75 py-10 border-b border-slate-200">
+      <div class="max-w-6xl mx-auto px-6">
+        <h2 class="text-xs font-semibold text-slate-500 tracking-wider uppercase mb-5">Start a new presentation</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+          
+          <!-- Template: Blank -->
+          <button onclick="createDeck('blank')" class="group flex flex-col items-start text-left focus:outline-none">
+            <div class="w-full aspect-[16/9] bg-white border border-slate-200 rounded-lg shadow-sm group-hover:shadow-md group-hover:border-amber-400 transition-all flex items-center justify-center relative overflow-hidden mb-3">
+              <i class="fa-solid fa-plus text-3xl text-slate-300 group-hover:text-amber-500 transition-colors"></i>
+            </div>
+            <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Blank</span>
+          </button>
+
+          <!-- Template: Pitch Deck -->
+          <button onclick="createDeck('pitch')" class="group flex flex-col items-start text-left focus:outline-none">
+            <div class="w-full aspect-[16/9] bg-slate-900 border border-slate-800 rounded-lg shadow-sm group-hover:shadow-md group-hover:border-amber-400 transition-all flex flex-col items-start justify-between p-4 relative overflow-hidden mb-3">
+              <div class="w-8 h-1 bg-amber-400 rounded-full"></div>
+              <div class="space-y-1">
+                <div class="text-[10px] font-bold text-amber-400 tracking-wider uppercase">Strategic Pitch</div>
+                <div class="text-xs font-serif text-white leading-tight">Elevating Global Delivery Metrics</div>
+              </div>
+            </div>
+            <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Marketing Pitch</span>
+          </button>
+
+          <!-- Template: Dark Minimalist -->
+          <button onclick="createDeck('minimalist')" class="group flex flex-col items-start text-left focus:outline-none">
+            <div class="w-full aspect-[16/9] bg-[#0f172a] border border-slate-800 rounded-lg shadow-sm group-hover:shadow-md group-hover:border-amber-400 transition-all flex flex-col items-start justify-between p-4 relative overflow-hidden mb-3">
+              <div class="w-6 h-6 rounded-full border border-teal-400 flex items-center justify-center">
+                <div class="w-2.5 h-2.5 rounded-full bg-teal-400"></div>
+              </div>
+              <div class="space-y-1">
+                <div class="text-[10px] font-mono text-teal-400 uppercase">Interactive System</div>
+                <div class="text-xs font-sans text-slate-200">The Modern Canvas Framework</div>
+              </div>
+            </div>
+            <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Dark Tech Studio</span>
+          </button>
+
+          <!-- Template: Academic -->
+          <button onclick="createDeck('academic')" class="group flex flex-col items-start text-left focus:outline-none">
+            <div class="w-full aspect-[16/9] bg-[#fdfbf7] border border-slate-200 rounded-lg shadow-sm group-hover:shadow-md group-hover:border-amber-400 transition-all flex flex-col items-start justify-between p-4 relative overflow-hidden mb-3">
+              <div class="w-full border-b border-slate-200 pb-1 flex justify-between items-center text-[8px] text-slate-400">
+                <span>RESEARCH PAPER</span>
+                <span>PART I</span>
+              </div>
+              <div class="space-y-1">
+                <div class="text-xs font-serif italic text-emerald-900">Theoretical Vector Analysis</div>
+              </div>
+            </div>
+            <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Academic Review</span>
+          </button>
+
+          <!-- Template: Creative -->
+          <button onclick="createDeck('creative')" class="group flex flex-col items-start text-left focus:outline-none">
+            <div class="w-full aspect-[16/9] bg-indigo-950 border border-indigo-900 rounded-lg shadow-sm group-hover:shadow-md group-hover:border-amber-400 transition-all flex flex-col items-start justify-between p-4 relative overflow-hidden mb-3">
+              <div class="absolute -right-6 -bottom-6 w-16 h-16 bg-pink-500 rounded-full blur-lg opacity-40"></div>
+              <div class="text-[10px] bg-pink-500/10 text-pink-300 px-1.5 py-0.5 rounded border border-pink-500/20 uppercase font-bold tracking-widest">Brand</div>
+              <div class="text-xs font-bold text-white">Dynamic Asset Packaging</div>
+            </div>
+            <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Creative Brand</span>
+          </button>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Decks Section -->
+    <main class="max-w-6xl mx-auto px-6 py-12">
+      <div class="flex items-center justify-between mb-8">
+        <h3 class="text-base font-semibold text-slate-950">Recent Presentations</h3>
+        <div class="flex items-center gap-3">
+          <button class="text-slate-500 hover:text-slate-800 p-1.5"><i class="fa-solid fa-grip text-lg"></i></button>
+          <button class="text-slate-500 hover:text-slate-800 p-1.5"><i class="fa-solid fa-arrow-up-z-a"></i></button>
+        </div>
+      </div>
+
+      <!-- File Grid Output -->
+      <div id="deck-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+        <!-- Rendered via Javascript Dynamic Deck Loading -->
+      </div>
+    </main>
+  </div>
+
+  <!-- ==================== EDITOR SYSTEM VIEW ==================== -->
+  <div id="view-editor" class="hidden h-screen flex flex-col bg-slate-100 overflow-hidden">
+    <!-- Top Action Ribbon -->
+    <header class="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between z-40">
+      <div class="flex items-center gap-3 flex-1 min-w-0">
+        <button onclick="exitToDashboard()" class="text-slate-500 hover:text-slate-900 hover:bg-slate-100 p-2 rounded-lg transition-colors">
+          <i class="fa-solid fa-house-chimney text-lg text-amber-500"></i>
+        </button>
+        <div class="flex flex-col flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <input type="text" id="deck-title-field" onchange="syncDeckMetaData()" class="text-base font-bold text-slate-900 bg-transparent hover:bg-slate-100 focus:bg-white focus:ring-2 focus:ring-amber-500/50 px-2 py-0.5 rounded border border-transparent outline-none transition-all truncate" value="Decker Strategy Presentation">
+            <span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded font-mono select-none" id="save-pill-hud">Autosaved</span>
+          </div>
+          <!-- Menu Bar mimicking Google Workspace tools -->
+          <div class="flex gap-4 text-xs font-medium text-slate-500 select-none px-2 mt-0.5 items-center">
+            <button onclick="triggerToast('Decker dynamically saves your slide configurations inside localStorage!', 'info')" class="hover:text-slate-900">File</button>
+            <button onclick="addNewSlide('title')" class="hover:text-slate-900">Insert Slide</button>
+            <div class="h-3 w-px bg-slate-200"></div>
+            <button onclick="exportPresentation('pptx')" class="hover:text-slate-900 flex items-center gap-1 text-amber-600 font-bold transition-all">
+              <i class="fa-solid fa-file-powerpoint text-amber-500"></i> Export PPTX
+            </button>
+            <button onclick="exportPresentation('pdf')" class="hover:text-slate-900 flex items-center gap-1 text-rose-600 font-bold transition-all">
+              <i class="fa-solid fa-file-pdf text-rose-500"></i> Export PDF
+            </button>
+            <div class="h-3 w-px bg-slate-200"></div>
+            <button onclick="downloadBackupJSON()" class="hover:text-slate-600 flex items-center gap-1 text-slate-400 transition-all text-[10px]">
+              <i class="fa-solid fa-code"></i> JSON Backup
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playback Controls Frame -->
+      <div class="flex items-center gap-3">
+        <button onclick="launchSlideshow()" class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold text-sm px-4 py-2 rounded-full shadow-md shadow-amber-500/10 flex items-center gap-2 transition-all">
+          <i class="fa-solid fa-play"></i> Present
+        </button>
+      </div>
+    </header>
+
+    <!-- Context Toolbar -->
+    <div class="bg-white border-b border-slate-200 px-4 py-2 flex items-center flex-wrap gap-2 text-slate-600 text-sm select-none">
+      <button onclick="addNewSlide()" class="hover:bg-slate-100 p-2 rounded-lg text-slate-800 font-bold flex items-center gap-1.5 border border-slate-200 text-xs shadow-sm bg-slate-50" title="Add Slide">
+        <i class="fa-solid fa-plus text-amber-500"></i> New Slide
+      </button>
+      <div class="h-6 w-px bg-slate-200 mx-2"></div>
+
+      <!-- Formatting Elements -->
+      <button onclick="updateSlideFontFamily('sans')" class="hover:bg-slate-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold" title="Font Style">
+        <i class="fa-solid fa-font"></i> Sans-Serif
+      </button>
+      <button onclick="updateSlideFontFamily('serif')" class="hover:bg-slate-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-serif font-semibold" title="Font Style">
+        <i class="fa-solid fa-font"></i> Serif
+      </button>
+      <button onclick="updateSlideFontFamily('mono')" class="hover:bg-slate-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-mono font-semibold" title="Font Style">
+        <i class="fa-solid fa-code text-[10px]"></i> Mono
+      </button>
+
+      <div class="h-6 w-px bg-slate-200 mx-2"></div>
+      <span class="text-xs text-slate-400">Scale:</span>
+      <select onchange="updateSlideFontScale(this.value)" id="toolbar-font-scale-select" class="bg-slate-50 border border-slate-200 rounded px-2.5 py-1 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+        <option value="75">75% (Small)</option>
+        <option value="90">90% (Compact)</option>
+        <option value="100" selected>100% (Normal)</option>
+        <option value="115">115% (Medium)</option>
+        <option value="130">130% (Large)</option>
+        <option value="150">150% (Huge)</option>
+      </select>
+
+      <div class="h-6 w-px bg-slate-200 mx-2"></div>
+
+      <!-- Color Presets -->
+      <span class="text-xs text-slate-400">Slide BG:</span>
+      <div class="flex items-center gap-1.5">
+        <button onclick="updateSlideBackground('#ffffff', '#1f2937')" class="w-5 h-5 rounded-full border border-slate-300 bg-white" title="White Theme"></button>
+        <button onclick="updateSlideBackground('#0f172a', '#f8fafc')" class="w-5 h-5 rounded-full border border-slate-900 bg-slate-900" title="Dark Navy"></button>
+        <button onclick="updateSlideBackground('#f8fafc', '#1f2937')" class="w-5 h-5 rounded-full border border-slate-300 bg-slate-100" title="Slate Gray"></button>
+        <button onclick="updateSlideBackground('#fbfbf9', '#111827')" class="w-5 h-5 rounded-full border border-amber-900/20 bg-amber-50/50" title="Warm Cream"></button>
+        <button onclick="updateSlideBackground('#112233', '#ffffff')" class="w-5 h-5 rounded-full border border-slate-800 bg-[#112233]" title="Space Cadet"></button>
+      </div>
+
+      <div class="h-6 w-px bg-slate-200 mx-2"></div>
+
+      <!-- Slide Layout Presets with new types -->
+      <span class="text-xs text-slate-400">Layout Preset:</span>
+      <button onclick="changeActiveSlideLayout('title')" class="hover:bg-slate-100 px-2 py-1 rounded-md text-xs font-medium border border-slate-200">Title</button>
+      <button onclick="changeActiveSlideLayout('split')" class="hover:bg-slate-100 px-2 py-1 rounded-md text-xs font-medium border border-slate-200">Split Col</button>
+      <button onclick="changeActiveSlideLayout('features')" class="hover:bg-slate-100 px-2 py-1 rounded-md text-xs font-medium border border-slate-200">Feature List</button>
+      <button onclick="changeActiveSlideLayout('minimal')" class="hover:bg-slate-100 px-2 py-1 rounded-md text-xs font-medium border border-slate-200">Quote Focus</button>
+      <button onclick="changeActiveSlideLayout('image')" class="hover:bg-slate-100 px-2 py-1 rounded-md text-xs font-medium border border-slate-200 text-teal-600 font-semibold"><i class="fa-solid fa-image mr-0.5"></i> Image</button>
+      <button onclick="changeActiveSlideLayout('video')" class="hover:bg-slate-100 px-2 py-1 rounded-md text-xs font-medium border border-slate-200 text-rose-600 font-semibold"><i class="fa-solid fa-video mr-0.5"></i> Video</button>
+      <button onclick="changeActiveSlideLayout('table')" class="hover:bg-slate-100 px-2 py-1 rounded-md text-xs font-medium border border-slate-200 text-indigo-600 font-semibold"><i class="fa-solid fa-table mr-0.5"></i> Table</button>
+      <button onclick="changeActiveSlideLayout('chart')" class="hover:bg-slate-100 px-2 py-1 rounded-md text-xs font-medium border border-slate-200 text-sky-600 font-semibold"><i class="fa-solid fa-chart-simple mr-0.5"></i> Chart</button>
+      <button onclick="changeActiveSlideLayout('simulation')" class="hover:bg-slate-100 px-2 py-1 rounded-md text-xs font-medium border border-slate-200 text-emerald-600 font-semibold"><i class="fa-solid fa-cube mr-0.5"></i> 3D Simulation</button>
+    </div>
+
+    <!-- Triple Column Grid Area -->
+    <div class="flex-1 flex overflow-hidden">
+      
+      <!-- Left Thumbnail Panel -->
+      <aside class="w-48 bg-white border-r border-slate-200 flex flex-col justify-between select-none">
+        <div id="editor-thumbnail-strip" class="p-3 space-y-3 overflow-y-auto flex-1">
+          <!-- Slide thumbnails render here dynamically -->
+        </div>
+        <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Slide Registry</span>
+          <button onclick="duplicateActiveSlide()" class="text-slate-500 hover:text-slate-800" title="Duplicate Slide"><i class="fa-solid fa-copy"></i></button>
+        </div>
+      </aside>
+
+      <!-- Center WYSIWYG Slide Workspace -->
+      <main class="flex-1 overflow-auto p-8 flex items-center justify-center relative bg-slate-200">
+        <div id="editor-slide-canvas" class="slide-canvas-ratio bg-white shadow-xl rounded-lg w-full max-w-4xl p-12 flex flex-col justify-center border border-slate-300 relative transition-colors duration-200 overflow-hidden">
+          <!-- Active slide workspace generated dynamically -->
+        </div>
+      </main>
+
+      <!-- Right Structural Inspector Panel -->
+      <aside class="w-80 bg-white border-l border-slate-200 flex flex-col overflow-hidden hidden lg:flex">
+        <!-- Panel Title -->
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+          <h4 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-amber-500"></i> Property Inspector
+          </h4>
+          <span class="text-[10px] text-slate-400 font-semibold" id="inspector-slide-index">Slide 1 of 1</span>
+        </div>
+
+        <!-- Custom Slide Properties Inspector -->
+        <div class="p-4 space-y-6 flex-1 overflow-y-auto text-sm">
+          
+          <!-- Contextual Component Fields depending on selected layout preset -->
+          <div id="inspector-contextual-controls" class="space-y-4 border-b border-slate-100 pb-4 hidden">
+            <!-- Dynamically populated fields go here -->
+          </div>
+
+          <!-- Text Align Panel -->
+          <div class="space-y-2">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">Alignment</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="updateSlideAlignment('left')" class="p-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-md text-center"><i class="fa-solid fa-align-left"></i></button>
+              <button onclick="updateSlideAlignment('center')" class="p-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-md text-center"><i class="fa-solid fa-align-center"></i></button>
+              <button onclick="updateSlideAlignment('right')" class="p-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-md text-center"><i class="fa-solid fa-align-right"></i></button>
+            </div>
+          </div>
+
+          <!-- Font Sizing Inspector -->
+          <div class="space-y-2">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">Font Scale</label>
+            <select onchange="updateSlideFontScale(this.value)" id="inspector-font-scale-select" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+              <option value="75">75% (Small)</option>
+              <option value="90">90% (Compact)</option>
+              <option value="100" selected>100% (Normal)</option>
+              <option value="115">115% (Medium)</option>
+              <option value="130">130% (Large)</option>
+              <option value="150">150% (Huge)</option>
+            </select>
+          </div>
+
+          <!-- Quick Content Injectors -->
+          <div class="space-y-3">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">Structural Addons</label>
+            <div class="space-y-2">
+              <button onclick="injectInteractiveWidget('bullet')" class="w-full text-left p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg flex items-center gap-2.5 transition-colors text-xs font-medium text-slate-700">
+                <i class="fa-solid fa-circle-check text-emerald-500"></i> Add Interactive Bullet Row
+              </button>
+              <button onclick="injectInteractiveWidget('highlight')" class="w-full text-left p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg flex items-center gap-2.5 transition-colors text-xs font-medium text-slate-700">
+                <i class="fa-solid fa-star text-amber-500"></i> Add Yellow Highlighting Banner
+              </button>
+              <button onclick="injectInteractiveWidget('code')" class="w-full text-left p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg flex items-center gap-2.5 transition-colors text-xs font-medium text-slate-700">
+                <i class="fa-solid fa-code text-indigo-500"></i> Inject Clean Codeblock Div
+              </button>
+            </div>
+          </div>
+
+          <!-- Active Metadata Box -->
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+            <div class="text-xs font-bold text-slate-800">Dynamic Live Node Tree</div>
+            <p class="text-[11px] text-slate-500 leading-normal">
+              Each component supports interactive variables. Embed responsive media slots, editable tables, dynamic charts, and rotation-aware ThreeJS physical environments instantly.
+            </p>
+          </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-100 bg-slate-50/50">
+          <button onclick="deleteActiveSlide()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs p-2.5 rounded-lg border border-rose-200 flex items-center justify-center gap-2 transition-all">
+            <i class="fa-solid fa-trash-can"></i> Delete Current Slide
+          </button>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- ==================== PLAYBACK / PRESENTATION MODE ==================== -->
+  <div id="view-playback" class="hidden fixed inset-0 w-screen h-screen bg-black z-[9999] overflow-hidden select-none">
+    
+    <!-- Virtual Presenter Pointer Tools Layer -->
+    <div id="playback-layer-canvas" class="relative w-full h-full flex items-center justify-center">
+      
+      <!-- HUD Presentation HUD -->
+      <div id="playback-menu-bar" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-5 py-3 rounded-2xl shadow-2xl backdrop-blur-md border border-slate-800 flex items-center gap-4 transition-all duration-300 opacity-100 hover:opacity-100 z-50">
+        <div class="flex items-center gap-1">
+          <button onclick="prevPlaybackSlide()" class="p-2 hover:bg-slate-800 rounded-lg transition-colors" title="Previous Slide"><i class="fa-solid fa-chevron-left text-lg"></i></button>
+          <span class="text-xs font-semibold px-2 min-w-16 text-center" id="playback-index-hud">Slide 1 of 1</span>
+          <button onclick="nextPlaybackSlide()" class="p-2 hover:bg-slate-800 rounded-lg transition-colors" title="Next Slide"><i class="fa-solid fa-chevron-right text-lg"></i></button>
+        </div>
+        
+        <div class="w-px h-6 bg-slate-800"></div>
+
+        <!-- Laser and Spotlight Pointer System Toggles -->
+        <div class="flex items-center gap-1.5">
+          <button id="btn-toggle-laser" onclick="toggleLaserPointer()" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-transparent hover:bg-slate-800 transition-colors flex items-center gap-2" title="Laser Highlight Pointer">
+            <i class="fa-solid fa-bullseye text-red-500"></i> Laser (L)
+          </button>
+          <button id="btn-toggle-spotlight" onclick="toggleSpotlightMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-transparent hover:bg-slate-800 transition-colors flex items-center gap-2" title="Dim Lights Spotlight Screen">
+            <i class="fa-solid fa-circle-radiation text-amber-400"></i> Spotlight (S)
+          </button>
+        </div>
+
+        <div class="w-px h-6 bg-slate-800"></div>
+
+        <!-- Exit Playback button -->
+        <button onclick="exitPlayback()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3 py-2 rounded-lg transition-all">
+          Exit (ESC)
+        </button>
+      </div>
+
+      <!-- Interactive Slides Frame centered in 16:9 box in the center -->
+      <div id="playback-slide-holder" class="slide-canvas-ratio w-full max-w-5xl bg-white p-16 flex flex-col justify-center border border-slate-900 shadow-2xl relative transition-transform duration-300 scale-100 overflow-hidden">
+        <!-- Rendered Slide Frame in here -->
+      </div>
+      
+    </div>
+
+    <!-- Active Spotlight overlay container -->
+    <div id="spotlight-mask-panel" class="spotlight-mask-layer"></div>
+    <!-- Active Laser dot container -->
+    <div id="laser-dot-system" class="laser-pointer-dot"></div>
+  </div>
+
+
+  <!-- ==================== JAVASCRIPT SYSTEM ENGINE ==================== -->
+  <script>
+    // Core layouts definitions expanded with Media, Charts, Tables, and ThreeJS 3D models
+    const CORE_PRESETS = {
+      title: {
+        layout: 'title',
+        title: 'Project Decker Blueprint',
+        subtitle: 'Unlocking modern visual metrics with structural DOM integration models',
+        bulletRows: ['Framework engineered on clean semantic layouts', 'Fully adaptable component architectures'],
+        codeblock: '',
+        highlightText: '',
+        background: '#ffffff',
+        textColor: '#0f172a',
+        fontFamily: 'sans',
+        align: 'left',
+        fontSizeScale: '100'
+      },
+      split: {
+        layout: 'split',
+        title: 'Scalable Platform Capabilities',
+        subtitle: 'Our target deployment focuses on two main delivery streams',
+        leftColTitle: 'Client Interface',
+        leftColBody: 'Designed using high-performance visual component models containing dynamic state machines.',
+        rightColTitle: 'Asset Repository',
+        rightColBody: 'Integrated storage node engines mapping real-time data elements instantly.',
+        bulletRows: [],
+        codeblock: '',
+        highlightText: '',
+        background: '#0f172a',
+        textColor: '#f8fafc',
+        fontFamily: 'sans',
+        align: 'left',
+        fontSizeScale: '100'
+      },
+      features: {
+        layout: 'features',
+        title: 'Core Delivery Highlights',
+        subtitle: 'Why Decker stands out compared to static text models',
+        bulletRows: [
+          'WYSIWYG layout designer directly modifying DOM elements',
+          'Integrated mouse highlight tools inside presentation viewports',
+          'Modular state engine keeping file sizes low and extremely agile'
+        ],
+        codeblock: '',
+        highlightText: 'A high-impact solution for modern technical pitches.',
+        background: '#fcfbfa',
+        textColor: '#1f2937',
+        fontFamily: 'serif',
+        align: 'center',
+        fontSizeScale: '100'
+      },
+      minimal: {
+        layout: 'minimal',
+        title: 'The ultimate canvas for developers who present.',
+        subtitle: 'Minimalism helps avoid unnecessary complexity. Content remains king with Decker.',
+        bulletRows: [],
+        codeblock: '// Native Decker Integration\nconst app = DeckerStudio.launch();\nconsole.log("Welcome to real presentation components!");',
+        highlightText: '',
+        background: '#090d16',
+        textColor: '#94a3b8',
+        fontFamily: 'mono',
+        align: 'left',
+        fontSizeScale: '100'
+      },
+      image: {
+        layout: 'image',
+        title: 'Visual Imagery Spotlight',
+        subtitle: 'Interactive image support featuring responsive high-fidelity masks',
+        imageSrc: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800',
+        imageCaption: 'Fig 1.1: Virtual orbit mapping models operating inside workspace containers.',
+        bulletRows: [],
+        codeblock: '',
+        highlightText: '',
+        background: '#ffffff',
+        textColor: '#0f172a',
+        fontFamily: 'sans',
+        align: 'center',
+        fontSizeScale: '100'
+      },
+      video: {
+        layout: 'video',
+        title: 'Dynamic Multi-Media Integrations',
+        subtitle: 'Input a direct MP4 file link or clean YouTube embed identifier below',
+        videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4', 
+        bulletRows: [],
+        codeblock: '',
+        highlightText: '',
+        background: '#0f172a',
+        textColor: '#f8fafc',
+        fontFamily: 'sans',
+        align: 'center',
+        fontSizeScale: '100'
+      },
+      table: {
+        layout: 'table',
+        title: 'Structured Delivery Metrics',
+        subtitle: 'Visualizing product cycles via inline editable data grids',
+        tableHeaders: ['Project Module', 'Assigned Scope', 'Status', 'Risk Index'],
+        tableRows: [
+          ['Rendering Engine', 'Canvas Redraw Pipeline', 'Reviewing', 'Moderate'],
+          ['Data Model Sync', 'Local State Registry', 'Completed', 'Low'],
+          ['WebGL Simulations', 'Interactive Math Particle Field', 'Deploying', 'Critical']
+        ],
+        bulletRows: [],
+        codeblock: '',
+        highlightText: '',
+        background: '#ffffff',
+        textColor: '#1e293b',
+        fontFamily: 'sans',
+        align: 'left',
+        fontSizeScale: '100'
+      },
+      chart: {
+        layout: 'chart',
+        title: 'Data-Driven Presentation Insights',
+        subtitle: 'Prototyping responsive charts utilizing embedded ChartJS metrics',
+        chartType: 'bar', // bar, line, pie, doughnut
+        chartLabels: 'Q1 Launch, Q2 Beta, Q3 Deployment, Q4 Scaling',
+        chartData: '24, 45, 82, 115',
+        bulletRows: [],
+        codeblock: '',
+        highlightText: '',
+        background: '#ffffff',
+        textColor: '#1f2937',
+        fontFamily: 'sans',
+        align: 'center',
+        fontSizeScale: '100'
+      },
+      simulation: {
+        layout: 'simulation',
+        title: '3D Simulation Sandbox Environment',
+        subtitle: 'Drag on the active container view to rotate the physical three.js elements',
+        simType: 'galaxy', // galaxy, wave, particles
+        bulletRows: [],
+        codeblock: '',
+        highlightText: '',
+        background: '#090d16',
+        textColor: '#38bdf8',
+        fontFamily: 'mono',
+        align: 'center',
+        fontSizeScale: '100'
+      }
+    };
+
+    // Main App State Tree
+    let appState = {
+      decks: [],
+      activeDeckId: null,
+      activeSlideIdx: 0,
+      playbackSlideIdx: 0,
+      laserEnabled: false,
+      spotlightEnabled: false
+    };
+
+    // Keep track of compiled active Chart/Three components dynamically
+    let activeWorkspaceChart = null;
+    let activeWorkspaceThree = { renderer: null, animeId: null, scene: null, camera: null, mesh: null };
+    let activePlaybackChart = null;
+    let activePlaybackThree = { renderer: null, animeId: null, scene: null, camera: null, mesh: null };
+
+    // Toast Alert Notification Box
+    function triggerToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const id = 'toast-' + Date.now();
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        info: 'bg-blue-600 text-white',
+        warning: 'bg-amber-500 text-slate-900',
+        error: 'bg-rose-600 text-white'
+      };
+      const toastHtml = `
+        <div id="${id}" class="${colors[type]} px-4 py-3 rounded-lg shadow-xl font-semibold text-xs flex items-center gap-2 transition-all duration-300 translate-x-5 opacity-0">
+          <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-info'}"></i>
+          <span>${escapeHtml(message)}</span>
+        </div>
+      `;
+      container.insertAdjacentHTML('beforeend', toastHtml);
+      const el = document.getElementById(id);
+      setTimeout(() => {
+        el.classList.remove('translate-x-5', 'opacity-0');
+      }, 10);
+      setTimeout(() => {
+        el.classList.add('translate-x-5', 'opacity-0');
+        setTimeout(() => el.remove(), 300);
+      }, 3500);
+    }
+
+    // Modal Confirmation Dialogue (Replacing legacy window.confirm)
+    let confirmCallback = null;
+    function triggerConfirm(title, message, callback) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-msg').textContent = message;
+      confirmCallback = callback;
+      document.getElementById('custom-confirm-modal').classList.remove('hidden');
+    }
+
+    document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
+      document.getElementById('custom-confirm-modal').classList.add('hidden');
+      confirmCallback = null;
+    });
+
+    document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+      document.getElementById('custom-confirm-modal').classList.add('hidden');
+      if (confirmCallback) confirmCallback();
+      confirmCallback = null;
+    });
+
+    // Initial Loading Layer
+    window.addEventListener('DOMContentLoaded', () => {
+      loadStateFromStorage();
+      renderDashboardDecks();
+    });
+
+    function loadStateFromStorage() {
+      const storageDecks = localStorage.getItem('decker_slides_decks');
+      if (storageDecks) {
+        appState.decks = JSON.parse(storageDecks);
+        // Normalize properties for robust backward compatibility
+        appState.decks.forEach(deck => {
+          deck.slides.forEach(slide => {
+            if (!slide.fontSizeScale) slide.fontSizeScale = '100';
+            if (!slide.imageSrc && slide.layout === 'image') {
+              slide.imageSrc = CORE_PRESETS.image.imageSrc;
+              slide.imageCaption = CORE_PRESETS.image.imageCaption;
+            }
+            if (!slide.videoSrc && slide.layout === 'video') {
+              slide.videoSrc = CORE_PRESETS.video.videoSrc;
+            }
+            if (!slide.tableHeaders && slide.layout === 'table') {
+              slide.tableHeaders = [...CORE_PRESETS.table.tableHeaders];
+              slide.tableRows = JSON.parse(JSON.stringify(CORE_PRESETS.table.tableRows));
+            }
+            if (!slide.chartType && slide.layout === 'chart') {
+              slide.chartType = CORE_PRESETS.chart.chartType;
+              slide.chartLabels = CORE_PRESETS.chart.chartLabels;
+              slide.chartData = CORE_PRESETS.chart.chartData;
+            }
+            if (!slide.simType && slide.layout === 'simulation') {
+              slide.simType = CORE_PRESETS.simulation.simType;
+            }
+          });
+        });
+      } else {
+        // Hydrate beautiful visual presentation collection
+        appState.decks = [
+          {
+            id: 'deck-alpha',
+            title: 'Welcome to Decker',
+            updatedAt: new Date().toLocaleString(),
+            slides: [
+              { ...CORE_PRESETS.title, title: 'Welcome to Decker', subtitle: 'A professional slide deck with tables, charts, and interactive Three.js 3D orbits.', fontSizeScale: '115' },
+              { ...CORE_PRESETS.chart, title: 'Interactive Visualization Models' },
+              { ...CORE_PRESETS.simulation, title: 'ThreeJS WebGL Environment Sandbox' },
+              { ...CORE_PRESETS.table, title: 'Tabular Core Matrices' },
+              { ...CORE_PRESETS.split, title: 'Flexible Architecture Splits' }
+            ]
+          }
+        ];
+        saveStateToStorage();
+      }
+    }
+
+    function saveStateToStorage() {
+      localStorage.setItem('decker_slides_decks', JSON.stringify(appState.decks));
+    }
+
+    // Dashboard View Render Functions
+    function renderDashboardDecks() {
+      const container = document.getElementById('deck-list-container');
+      container.innerHTML = '';
+
+      appState.decks.forEach(deck => {
+        const slideCount = deck.slides.length;
+        const cardHtml = `
+          <div class="bg-white border border-slate-200 hover:border-amber-400 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group h-44">
+            <div class="p-5 flex-1 cursor-pointer" onclick="openDeckInEditor('${deck.id}')">
+              <div class="flex items-center gap-2 mb-2">
+                <i class="fa-solid fa-file-powerpoint text-amber-500 text-lg"></i>
+                <h4 class="font-bold text-slate-800 text-sm truncate group-hover:text-amber-600 transition-colors">${escapeHtml(deck.title)}</h4>
+              </div>
+              <p class="text-[11px] text-slate-400 mb-1">Updated ${deck.updatedAt}</p>
+              <div class="inline-flex items-center gap-1 text-xs text-slate-500 font-medium bg-slate-50 px-2 py-1 rounded">
+                <i class="fa-solid fa-layer-group text-[10px]"></i> ${slideCount} Slide${slideCount === 1 ? '' : 's'}
+              </div>
+            </div>
+            <div class="bg-slate-50 px-5 py-3 border-t border-slate-150 flex items-center justify-between">
+              <button onclick="openDeckInEditor('${deck.id}')" class="text-xs font-bold text-amber-600 hover:text-amber-700">Open Studio</button>
+              <button onclick="deleteDeck('${deck.id}', event)" class="text-slate-400 hover:text-rose-600 text-xs p-1" title="Delete presentation">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', cardHtml);
+      });
+    }
+
+    function createDeck(type) {
+      let deckSlides = [];
+      let title = "Untitled Decker Presentation";
+
+      if (type === 'pitch') {
+        title = "Strategic Brand Pitch";
+        deckSlides = [
+          { ...CORE_PRESETS.title, title: 'Strategic Pitch Model', subtitle: 'Elevating Global Delivery Metrics across platforms.' },
+          { ...CORE_PRESETS.chart, title: 'Market Strategy Projections' },
+          { ...CORE_PRESETS.split, title: 'Market Strategy Delivery' },
+          { ...CORE_PRESETS.features, title: 'Key Project Deliverables' }
+        ];
+      } else if (type === 'minimal') {
+        title = "Dark Tech Canvas";
+        deckSlides = [
+          { ...CORE_PRESETS.minimal, title: 'The Modern Canvas Framework' },
+          { ...CORE_PRESETS.simulation, title: 'Core Simulation Environment' },
+          { ...CORE_PRESETS.split, background: '#1e293b', title: 'Architecture Splits' }
+        ];
+      } else if (type === 'academic') {
+        title = "Academic Research Review";
+        deckSlides = [
+          { ...CORE_PRESETS.title, fontFamily: 'serif', background: '#fdfbf7', textColor: '#064e3b', title: 'Theoretical Vector Analysis', subtitle: 'Examining slide components inside real browser DOM states.' },
+          { ...CORE_PRESETS.table, title: 'Dataset Reference Records' }
+        ];
+      } else if (type === 'creative') {
+        title = "Creative Design System";
+        deckSlides = [
+          { ...CORE_PRESETS.image, title: 'Aesthetic Interface Portfolios' },
+          { ...CORE_PRESETS.features, background: '#1e1b4b', textColor: '#fdf2f8', title: 'Dynamic Asset Packaging' }
+        ];
+      } else {
+        // Blank Presentation template
+        deckSlides = [
+          { ...CORE_PRESETS.title, title: 'New Decker Slide', subtitle: 'Double click on text blocks to change slide titles instantly.' }
+        ];
+      }
+
+      const newDeck = {
+        id: 'deck-' + Date.now(),
+        title: title,
+        updatedAt: new Date().toLocaleString(),
+        slides: deckSlides
+      };
+
+      appState.decks.unshift(newDeck);
+      saveStateToStorage();
+      renderDashboardDecks();
+      openDeckInEditor(newDeck.id);
+    }
+
+    function deleteDeck(deckId, event) {
+      event.stopPropagation();
+      triggerConfirm(
+        "Delete Presentation?",
+        "Are you sure you want to permanently erase this presentation from storage?",
+        () => {
+          appState.decks = appState.decks.filter(d => d.id !== deckId);
+          saveStateToStorage();
+          renderDashboardDecks();
+          triggerToast("Presentation Deleted", "info");
+        }
+      );
+    }
+
+    // Navigation and screen changes
+    function openDeckInEditor(deckId) {
+      appState.activeDeckId = deckId;
+      appState.activeSlideIdx = 0;
+      
+      const deck = appState.decks.find(d => d.id === deckId);
+      document.getElementById('deck-title-field').value = deck.title;
+      
+      document.getElementById('view-dashboard').classList.replace('block', 'hidden');
+      document.getElementById('view-editor').classList.replace('hidden', 'flex');
+      
+      refreshEditorSidebar();
+      refreshSlideWorkspace();
+    }
+
+    function exitToDashboard() {
+      syncDeckMetaData();
+      saveStateToStorage();
+      renderDashboardDecks();
+      
+      cleanThreeInstance(activeWorkspaceThree);
+
+      document.getElementById('view-editor').classList.replace('flex', 'hidden');
+      document.getElementById('view-dashboard').classList.replace('hidden', 'block');
+    }
+
+    // WYSIWYG Editing Area Controllers
+    function refreshEditorSidebar() {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const thumbStrip = document.getElementById('editor-thumbnail-strip');
+      thumbStrip.innerHTML = '';
+
+      deck.slides.forEach((slide, idx) => {
+        const isActive = idx === appState.activeSlideIdx;
+        const fontClass = slide.fontFamily === 'serif' ? 'font-serif' : slide.fontFamily === 'mono' ? 'font-mono' : 'font-sans';
+        
+        let iconHtml = '<i class="fa-solid fa-file-powerpoint"></i>';
+        if (slide.layout === 'image') iconHtml = '<i class="fa-solid fa-image"></i>';
+        if (slide.layout === 'video') iconHtml = '<i class="fa-solid fa-circle-play"></i>';
+        if (slide.layout === 'table') iconHtml = '<i class="fa-solid fa-table"></i>';
+        if (slide.layout === 'chart') iconHtml = '<i class="fa-solid fa-chart-line"></i>';
+        if (slide.layout === 'simulation') iconHtml = '<i class="fa-solid fa-cubes"></i>';
+
+        const thumbnailCard = `
+          <div onclick="selectActiveSlide(${idx})" 
+               draggable="true"
+               ondragstart="dragSlide(event, ${idx})"
+               ondragover="allowDropSlide(event, ${idx})"
+               ondragleave="dragLeaveSlide(event, ${idx})"
+               ondrop="dropSlide(event, ${idx})"
+               id="thumb-${idx}"
+               class="group relative cursor-pointer border-2 rounded-lg p-2 aspect-[16/9] flex flex-col justify-between overflow-hidden transition-all ${isActive ? 'border-amber-500 bg-amber-50/50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}">
+            
+            <!-- Slide Index Marker -->
+            <div class="absolute top-1 left-1.5 text-[9px] font-bold text-slate-400 select-none pointer-events-none">${idx + 1}</div>
+            
+            <!-- Central Slide Mock Preview Text -->
+            <div class="flex-1 flex flex-col justify-center items-center px-1 text-center scale-90 pointer-events-none">
+              <div class="text-[10px] text-amber-500 opacity-80 mb-0.5">${iconHtml}</div>
+              <div class="text-[9px] font-bold truncate w-full ${fontClass}" style="color: ${slide.textColor}">${slide.title}</div>
+            </div>
+            
+            <!-- Quick Touch Accessibility Reordering Arrows -->
+            <div class="absolute bottom-1 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+              ${idx > 0 ? `<button onclick="moveSlide(${idx}, -1, event)" class="p-1 text-slate-400 hover:text-amber-500" title="Move Up"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>` : ''}
+              ${idx < deck.slides.length - 1 ? `<button onclick="moveSlide(${idx}, 1, event)" class="p-1 text-slate-400 hover:text-amber-500" title="Move Down"><i class="fa-solid fa-chevron-down text-[10px]"></i></button>` : ''}
+            </div>
+
+            <!-- Slide Action Utilities -->
+            <div class="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              <button onclick="deleteSlideInSidebar(${idx}, event)" class="p-1 text-slate-400 hover:text-red-600" title="Delete Slide"><i class="fa-solid fa-trash text-[10px]"></i></button>
+            </div>
+          </div>
+        `;
+        thumbStrip.insertAdjacentHTML('beforeend', thumbnailCard);
+      });
+
+      document.getElementById('inspector-slide-index').textContent = `Slide ${appState.activeSlideIdx + 1} of ${deck.slides.length}`;
+    }
+
+    function selectActiveSlide(idx) {
+      cleanThreeInstance(activeWorkspaceThree);
+      appState.activeSlideIdx = idx;
+      refreshEditorSidebar();
+      refreshSlideWorkspace();
+    }
+
+    // Drag & Drop Dragover and Reordering handlers
+    function dragSlide(event, index) {
+      event.dataTransfer.setData("text/plain", index);
+      event.dataTransfer.effectAllowed = "move";
+    }
+
+    function allowDropSlide(event, index) {
+      event.preventDefault();
+      const target = document.getElementById(`thumb-${index}`);
+      if (target) target.classList.add('drag-over');
+    }
+
+    function dragLeaveSlide(event, index) {
+      const target = document.getElementById(`thumb-${index}`);
+      if (target) target.classList.remove('drag-over');
+    }
+
+    function dropSlide(event, targetIndex) {
+      event.preventDefault();
+      const sourceIndex = parseInt(event.dataTransfer.getData("text/plain"));
+      
+      const target = document.getElementById(`thumb-${targetIndex}`);
+      if (target) target.classList.remove('drag-over');
+
+      if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
+
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const slides = deck.slides;
+      
+      // Perform array splice to move slide
+      const [movedSlide] = slides.splice(sourceIndex, 1);
+      slides.splice(targetIndex, 0, movedSlide);
+
+      // Track active index mapping
+      if (appState.activeSlideIdx === sourceIndex) {
+        appState.activeSlideIdx = targetIndex;
+      } else if (appState.activeSlideIdx > sourceIndex && appState.activeSlideIdx <= targetIndex) {
+        appState.activeSlideIdx--;
+      } else if (appState.activeSlideIdx < sourceIndex && appState.activeSlideIdx >= targetIndex) {
+        appState.activeSlideIdx++;
+      }
+
+      saveStateToStorage();
+      refreshEditorSidebar();
+      refreshSlideWorkspace();
+    }
+
+    function moveSlide(index, direction, event) {
+      event.stopPropagation();
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const slides = deck.slides;
+      const targetIndex = index + direction;
+
+      if (targetIndex < 0 || targetIndex >= slides.length) return;
+
+      // Swap positions in the slides list
+      const temp = slides[index];
+      slides[index] = slides[targetIndex];
+      slides[targetIndex] = temp;
+
+      // Update active selection to match active slide index
+      if (appState.activeSlideIdx === index) {
+        appState.activeSlideIdx = targetIndex;
+      } else if (appState.activeSlideIdx === targetIndex) {
+        appState.activeSlideIdx = index;
+      }
+
+      saveStateToStorage();
+      refreshEditorSidebar();
+      refreshSlideWorkspace();
+    }
+
+    function refreshSlideWorkspace() {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const slide = deck.slides[appState.activeSlideIdx];
+      const workspace = document.getElementById('editor-slide-canvas');
+      
+      // Clear previous slide and render slide according to active state properties
+      workspace.className = `slide-canvas-ratio rounded-lg w-full max-w-4xl p-12 flex flex-col justify-center border border-slate-300 relative transition-all duration-200 overflow-hidden`;
+      
+      // Apply background and fonts
+      workspace.style.backgroundColor = slide.background;
+      workspace.style.color = slide.textColor;
+      workspace.style.textAlign = slide.align || 'left';
+      
+      const fontClass = slide.fontFamily === 'serif' ? 'font-serif' : slide.fontFamily === 'mono' ? 'font-mono' : 'font-sans';
+      const scaleClass = `scale-font-${slide.fontSizeScale || '100'}`;
+      workspace.className += ` ${fontClass} ${scaleClass}`;
+
+      // Sync Toolbar Dropdowns
+      document.getElementById('toolbar-font-scale-select').value = slide.fontSizeScale || '100';
+      const inspectorSelect = document.getElementById('inspector-font-scale-select');
+      if (inspectorSelect) inspectorSelect.value = slide.fontSizeScale || '100';
+
+      // Assemble contenteditable containers inside slide layout view
+      let layoutHtml = '';
+
+      if (slide.layout === 'split') {
+        layoutHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-4">
+            <div class="space-y-1">
+              <h2 contenteditable="true" data-placeholder="Title..." class="text-3xl font-extrabold focus:outline-none" oninput="updateSlideText('title', this.innerText)">${slide.title}</h2>
+              <p contenteditable="true" data-placeholder="Click to add subtext..." class="text-sm text-slate-400 focus:outline-none" oninput="updateSlideText('subtitle', this.innerText)">${slide.subtitle}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-left">
+              <div class="p-3.5 bg-black/5 rounded-lg border border-slate-500/10">
+                <h3 contenteditable="true" class="text-xs font-bold uppercase tracking-wider text-amber-500 focus:outline-none" oninput="updateSlideText('leftColTitle', this.innerText)">${slide.leftColTitle || 'Left Segment'}</h3>
+                <p contenteditable="true" class="text-xs text-slate-400 mt-1.5 focus:outline-none leading-relaxed" oninput="updateSlideText('leftColBody', this.innerText)">${slide.leftColBody || 'Left section body text.'}</p>
+              </div>
+              <div class="p-3.5 bg-black/5 rounded-lg border border-slate-500/10">
+                <h3 contenteditable="true" class="text-xs font-bold uppercase tracking-wider text-amber-500 focus:outline-none" oninput="updateSlideText('rightColTitle', this.innerText)">${slide.rightColTitle || 'Right Segment'}</h3>
+                <p contenteditable="true" class="text-xs text-slate-400 mt-1.5 focus:outline-none leading-relaxed" oninput="updateSlideText('rightColBody', this.innerText)">${slide.rightColBody || 'Right section body text.'}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'features') {
+        let bulletHtml = '';
+        slide.bulletRows.forEach((row, bidx) => {
+          bulletHtml += `
+            <div class="flex items-start gap-2.5 text-xs">
+              <span class="text-amber-500 font-bold mt-0.5">✓</span>
+              <p contenteditable="true" class="focus:outline-none text-slate-400 flex-1 leading-normal" oninput="updateSlideBullet(${bidx}, this.innerText)">${row}</p>
+            </div>
+          `;
+        });
+
+        layoutHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-4">
+            <div class="space-y-1">
+              <h2 contenteditable="true" class="text-4xl font-black focus:outline-none" oninput="updateSlideText('title', this.innerText)">${slide.title}</h2>
+              <p contenteditable="true" class="text-sm text-slate-400 focus:outline-none" oninput="updateSlideText('subtitle', this.innerText)">${slide.subtitle}</p>
+            </div>
+            <div class="space-y-2 text-left max-w-xl">
+              ${bulletHtml}
+            </div>
+            ${slide.highlightText ? `
+              <div class="p-2 bg-yellow-400/10 border border-yellow-400/20 text-[10px] font-bold text-amber-500 rounded text-center">
+                ${slide.highlightText}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else if (slide.layout === 'minimal') {
+        layoutHtml = `
+          <div class="space-y-4 max-w-2xl mx-auto w-full">
+            <h2 contenteditable="true" class="text-2xl font-serif italic text-slate-100 focus:outline-none" oninput="updateSlideText('title', this.innerText)">"${slide.title}"</h2>
+            <p contenteditable="true" class="text-xs text-slate-400 focus:outline-none leading-relaxed" oninput="updateSlideText('subtitle', this.innerText)">${slide.subtitle}</p>
+            ${slide.codeblock ? `
+              <div class="p-3 bg-black/60 rounded-lg text-left text-xs font-mono text-indigo-400 border border-slate-800 overflow-x-auto whitespace-pre-wrap">
+                ${slide.codeblock}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else if (slide.layout === 'image') {
+        layoutHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-3 text-center">
+            <div class="space-y-0.5">
+              <h2 contenteditable="true" class="text-2xl font-extrabold focus:outline-none" oninput="updateSlideText('title', this.innerText)">${slide.title}</h2>
+              <p contenteditable="true" class="text-xs text-slate-400 focus:outline-none" oninput="updateSlideText('subtitle', this.innerText)">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 flex items-center justify-center overflow-hidden py-1">
+              <img src="${slide.imageSrc}" onerror="this.src='https://placehold.co/600x300/e2e8f0/475569?text=Image+Load+Error'" class="max-h-[160px] md:max-h-[200px] object-contain rounded-lg shadow-md border border-slate-200">
+            </div>
+            <p contenteditable="true" class="text-[11px] italic text-slate-400 focus:outline-none" oninput="updateSlideText('imageCaption', this.innerText)">${slide.imageCaption || ''}</p>
+          </div>
+        `;
+      } else if (slide.layout === 'video') {
+        const isYT = slide.videoSrc.includes('youtube.com') || slide.videoSrc.includes('youtu.be');
+        let ytId = '';
+        if (isYT) {
+          const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+          const match = slide.videoSrc.match(regExp);
+          ytId = (match && match[2].length === 11) ? match[2] : '';
+        }
+
+        layoutHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-3 text-center">
+            <div class="space-y-0.5">
+              <h2 contenteditable="true" class="text-2xl font-extrabold focus:outline-none" oninput="updateSlideText('title', this.innerText)">${slide.title}</h2>
+              <p contenteditable="true" class="text-xs text-slate-400 focus:outline-none" oninput="updateSlideText('subtitle', this.innerText)">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 flex items-center justify-center py-1">
+              <div class="w-full max-w-[400px] aspect-video bg-black/25 rounded-lg border border-slate-300/20 flex items-center justify-center overflow-hidden relative shadow-lg">
+                ${isYT && ytId ? `
+                  <iframe class="absolute inset-0 w-full h-full" src="https://www.youtube.com/embed/${ytId}" frameborder="0" allowfullscreen></iframe>
+                ` : `
+                  <video class="absolute inset-0 w-full h-full object-contain" src="${slide.videoSrc}" controls muted autoplay loop></video>
+                `}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'table') {
+        let headersHtml = '';
+        slide.tableHeaders.forEach((th, hIdx) => {
+          headersHtml += `<th contenteditable="true" onblur="updateSlideTableHeader(${hIdx}, this.innerText)" class="px-3 py-2 bg-slate-100 text-[11px] font-bold text-slate-700 border border-slate-300 text-left outline-none">${th}</th>`;
+        });
+
+        let rowsHtml = '';
+        slide.tableRows.forEach((row, rIdx) => {
+          rowsHtml += '<tr>';
+          row.forEach((cell, cIdx) => {
+            rowsHtml += `<td contenteditable="true" onblur="updateSlideTableCell(${rIdx}, ${cIdx}, this.innerText)" class="px-3 py-1.5 text-[10px] text-slate-600 border border-slate-300 outline-none">${cell}</td>`;
+          });
+          rowsHtml += '</tr>';
+        });
+
+        layoutHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-4">
+            <div class="space-y-1">
+              <h2 contenteditable="true" class="text-2xl font-extrabold focus:outline-none" oninput="updateSlideText('title', this.innerText)">${slide.title}</h2>
+              <p contenteditable="true" class="text-xs text-slate-400 focus:outline-none" oninput="updateSlideText('subtitle', this.innerText)">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 overflow-auto max-h-[180px] bg-white rounded-lg border border-slate-300 shadow-sm">
+              <table class="w-full border-collapse">
+                <thead><tr>${headersHtml}</tr></thead>
+                <tbody>${rowsHtml}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'chart') {
+        layoutHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-3 text-center">
+            <div class="space-y-0.5">
+              <h2 contenteditable="true" class="text-2xl font-extrabold focus:outline-none" oninput="updateSlideText('title', this.innerText)">${slide.title}</h2>
+              <p contenteditable="true" class="text-xs text-slate-400 focus:outline-none" oninput="updateSlideText('subtitle', this.innerText)">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 flex items-center justify-center max-h-[160px] md:max-h-[190px] relative py-1">
+              <canvas id="workspace-chart-canvas" class="max-w-[420px] max-h-[160px]"></canvas>
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'simulation') {
+        layoutHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-2 text-center relative" style="height:100%">
+            <div class="space-y-0.5 z-10">
+              <h2 contenteditable="true" class="text-2xl font-extrabold focus:outline-none" oninput="updateSlideText('title', this.innerText)">${slide.title}</h2>
+              <p contenteditable="true" class="text-xs text-slate-400 focus:outline-none" oninput="updateSlideText('subtitle', this.innerText)">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 rounded-lg overflow-hidden relative flex items-center justify-center bg-[#050811] border border-slate-300/10 simulation-canvas-container" id="workspace-three-container">
+              <!-- Three.js Canvas initialized here -->
+            </div>
+          </div>
+        `;
+      } else {
+        // Standard Title Layout
+        layoutHtml = `
+          <div class="space-y-4 max-w-2xl mx-auto">
+            <h1 contenteditable="true" data-placeholder="Title..." class="text-5xl font-black tracking-tight focus:outline-none leading-tight" oninput="updateSlideText('title', this.innerText)">${slide.title}</h1>
+            <p contenteditable="true" data-placeholder="Click to add slide description..." class="text-base text-slate-400 focus:outline-none max-w-lg mx-auto leading-relaxed" oninput="updateSlideText('subtitle', this.innerText)">${slide.subtitle}</p>
+          </div>
+        `;
+      }
+
+      workspace.innerHTML = layoutHtml;
+
+      // Populate dynamic context property fields
+      renderContextualInspector(slide);
+
+      // Post-rendering hooks for chart compilation
+      if (slide.layout === 'chart') {
+        setTimeout(() => buildSlideChart('workspace-chart-canvas', slide, 'activeWorkspaceChart'), 50);
+      }
+      // Post-rendering hooks for WebGL physics simulator
+      if (slide.layout === 'simulation') {
+        setTimeout(() => buildSlideSimulation('workspace-three-container', slide, activeWorkspaceThree), 50);
+      }
+    }
+
+    function renderContextualInspector(slide) {
+      const panel = document.getElementById('inspector-contextual-controls');
+      panel.innerHTML = '';
+      panel.classList.add('hidden');
+
+      if (slide.layout === 'image') {
+        panel.classList.remove('hidden');
+        panel.innerHTML = `
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Image Settings</label>
+          <div class="space-y-2.5">
+            <div>
+              <span class="text-[10px] text-slate-400 block mb-0.5 font-bold">Image URL</span>
+              <input type="text" value="${slide.imageSrc}" onchange="updateSlideInspectorText('imageSrc', this.value)" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-amber-500">
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block mb-0.5 font-bold">Custom Upload</span>
+              <input type="file" accept="image/*" onchange="uploadImageBase64(this)" class="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'video') {
+        panel.classList.remove('hidden');
+        panel.innerHTML = `
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Video Source</label>
+          <div>
+            <span class="text-[10px] text-slate-400 block mb-0.5 font-bold">MP4 Link or YouTube Address</span>
+            <input type="text" value="${slide.videoSrc}" onchange="updateSlideInspectorText('videoSrc', this.value)" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-amber-500">
+            <span class="text-[9px] text-slate-400 block mt-1">Accepts any raw web MP4 URL or YouTube links.</span>
+          </div>
+        `;
+      } else if (slide.layout === 'table') {
+        panel.classList.remove('hidden');
+        panel.innerHTML = `
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Table Controls</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="modifySlideTable('add-row')" class="p-1.5 border border-slate-200 hover:bg-slate-50 rounded text-center text-xs text-slate-600"><i class="fa-solid fa-plus text-emerald-500"></i> Row</button>
+            <button onclick="modifySlideTable('del-row')" class="p-1.5 border border-slate-200 hover:bg-slate-50 rounded text-center text-xs text-slate-600"><i class="fa-solid fa-minus text-rose-500"></i> Row</button>
+            <button onclick="modifySlideTable('add-col')" class="p-1.5 border border-slate-200 hover:bg-slate-50 rounded text-center text-xs text-slate-600"><i class="fa-solid fa-plus text-emerald-500"></i> Col</button>
+            <button onclick="modifySlideTable('del-col')" class="p-1.5 border border-slate-200 hover:bg-slate-50 rounded text-center text-xs text-slate-600"><i class="fa-solid fa-minus text-rose-500"></i> Col</button>
+          </div>
+        `;
+      } else if (slide.layout === 'chart') {
+        panel.classList.remove('hidden');
+        panel.innerHTML = `
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Chart Configuration</label>
+          <div class="space-y-2">
+            <div>
+              <span class="text-[10px] text-slate-400 block mb-0.5 font-bold">Chart Model Type</span>
+              <select onchange="updateSlideInspectorText('chartType', this.value)" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+                <option value="bar" ${slide.chartType === 'bar' ? 'selected' : ''}>Vertical Bar</option>
+                <option value="line" ${slide.chartType === 'line' ? 'selected' : ''}>Trend Line</option>
+                <option value="pie" ${slide.chartType === 'pie' ? 'selected' : ''}>Pie Distribution</option>
+                <option value="doughnut" ${slide.chartType === 'doughnut' ? 'selected' : ''}>Doughnut Core</option>
+              </select>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block mb-0.5 font-bold">Data Series Labels (Comma Separated)</span>
+              <input type="text" value="${slide.chartLabels}" onchange="updateSlideInspectorText('chartLabels', this.value)" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block mb-0.5 font-bold">Numeric Values (Comma Separated)</span>
+              <input type="text" value="${slide.chartData}" onchange="updateSlideInspectorText('chartData', this.value)" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'simulation') {
+        panel.classList.remove('hidden');
+        panel.innerHTML = `
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">3D Environment</label>
+          <div>
+            <span class="text-[10px] text-slate-400 block mb-0.5 font-bold">Simulation Type</span>
+            <select onchange="updateSlideInspectorText('simType', this.value)" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+              <option value="galaxy" ${slide.simType === 'galaxy' ? 'selected' : ''}>Orbital Star Galaxy</option>
+              <option value="wave" ${slide.simType === 'wave' ? 'selected' : ''}>3D Ocean Sinusoid Wave</option>
+              <option value="particles" ${slide.simType === 'particles' ? 'selected' : ''}>Thermal Particle Brownian Mesh</option>
+            </select>
+          </div>
+        `;
+      }
+    }
+
+    // Chart compilation engine using Chart.js
+    function buildSlideChart(canvasId, slide, instanceKey) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+
+      // Clean legacy active chart pointers
+      if (instanceKey === 'activeWorkspaceChart' && activeWorkspaceChart) {
+        activeWorkspaceChart.destroy();
+        activeWorkspaceChart = null;
+      } else if (instanceKey === 'activePlaybackChart' && activePlaybackChart) {
+        activePlaybackChart.destroy();
+        activePlaybackChart = null;
+      }
+
+      const labels = slide.chartLabels.split(',').map(s => s.trim());
+      const rawValues = slide.chartData.split(',').map(s => parseFloat(s.trim()) || 0);
+
+      const ctx = canvas.getContext('2d');
+      const compiled = new Chart(ctx, {
+        type: slide.chartType || 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Index Vector',
+            data: rawValues,
+            backgroundColor: [
+              'rgba(245, 158, 11, 0.75)', // Amber
+              'rgba(14, 165, 233, 0.75)', // Sky
+              'rgba(168, 85, 247, 0.75)', // Purple
+              'rgba(16, 185, 129, 0.75)', // Emerald
+              'rgba(244, 63, 94, 0.75)'   // Rose
+            ],
+            borderColor: [
+              '#f59e0b', '#0ea5e9', '#a855f7', '#10b981', '#f43f5e'
+            ],
+            borderWidth: 1.5,
+            hoverOffset: 12
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: slide.textColor === '#ffffff' || slide.textColor === '#f8fafc' ? '#94a3b8' : '#475569',
+                font: { size: 9, family: 'Plus Jakarta Sans' }
+              }
+            }
+          },
+          scales: (slide.chartType === 'bar' || slide.chartType === 'line') ? {
+            x: {
+              grid: { color: 'rgba(148, 163, 184, 0.1)' },
+              ticks: { color: slide.textColor === '#ffffff' || slide.textColor === '#f8fafc' ? '#94a3b8' : '#475569', font: { size: 9 } }
+            },
+            y: {
+              grid: { color: 'rgba(148, 163, 184, 0.1)' },
+              ticks: { color: slide.textColor === '#ffffff' || slide.textColor === '#f8fafc' ? '#94a3b8' : '#475569', font: { size: 9 } }
+            }
+          } : {}
+        }
+      });
+
+      if (instanceKey === 'activeWorkspaceChart') activeWorkspaceChart = compiled;
+      else if (instanceKey === 'activePlaybackChart') activePlaybackChart = compiled;
+    }
+
+    // ThreeJS 3D WebGL Orbital Simulation Engine
+    function buildSlideSimulation(containerId, slide, instanceObj) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      cleanThreeInstance(instanceObj);
+
+      const width = container.clientWidth || 400;
+      const height = container.clientHeight || 200;
+
+      // Setting up standard 3D webgl components
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+      camera.position.z = 25;
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      let targetGroup = new THREE.Group();
+      scene.add(targetGroup);
+
+      // Generating geometry parameters based on simulation configurations
+      if (slide.simType === 'galaxy') {
+        // Spiral Star Galaxy
+        const count = 1200;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+
+        for (let i = 0; i < count; i++) {
+          const r = Math.pow(Math.random(), 2.5) * 15;
+          const theta = Math.random() * Math.PI * 2 + (r * 0.4);
+          const spiralY = (Math.random() - 0.5) * 1.5;
+
+          positions[i * 3] = Math.cos(theta) * r;
+          positions[i * 3 + 1] = spiralY;
+          positions[i * 3 + 2] = Math.sin(theta) * r;
+
+          // Multi-spectral gradient
+          colors[i * 3] = r / 15; // R
+          colors[i * 3 + 1] = 0.3 + (Math.random() * 0.3); // G
+          colors[i * 3 + 2] = 1.0 - (r / 20); // B
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+          size: 0.25,
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.85
+        });
+
+        const points = new THREE.Points(geometry, material);
+        targetGroup.add(points);
+
+      } else if (slide.simType === 'wave') {
+        // Wave particles field
+        const countX = 30;
+        const countZ = 30;
+        const count = countX * countZ;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+
+        let idx = 0;
+        for (let x = 0; x < countX; x++) {
+          for (let z = 0; z < countZ; z++) {
+            positions[idx * 3] = (x - countX / 2) * 1.0;
+            positions[idx * 3 + 1] = 0;
+            positions[idx * 3 + 2] = (z - countZ / 2) * 1.0;
+            idx++;
+          }
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.PointsMaterial({
+          color: 0x38bdf8,
+          size: 0.3,
+          transparent: true,
+          opacity: 0.9
+        });
+
+        const points = new THREE.Points(geometry, material);
+        targetGroup.add(points);
+
+      } else {
+        // Particles Mesh Brownian Matrix
+        const count = 350;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+
+        for (let i = 0; i < count; i++) {
+          positions[i * 3] = (Math.random() - 0.5) * 20;
+          positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+          positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.PointsMaterial({
+          color: 0xf59e0b,
+          size: 0.4,
+          transparent: true,
+          opacity: 0.8
+        });
+
+        const points = new THREE.Points(geometry, material);
+        targetGroup.add(points);
+      }
+
+      // Keep tracking variables inside instance management scope
+      instanceObj.renderer = renderer;
+      instanceObj.scene = scene;
+      instanceObj.camera = camera;
+      instanceObj.mesh = targetGroup;
+
+      let rotationX = 0.002;
+      let rotationY = 0.005;
+
+      // Drag and touch events to orbit simulation space
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
+
+      const onMouseDown = (e) => {
+        isDragging = true;
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        previousMousePosition = { x: clientX, y: clientY };
+      };
+
+      const onMouseMove = (e) => {
+        if (!isDragging) return;
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        const deltaMove = {
+          x: clientX - previousMousePosition.x,
+          y: clientY - previousMousePosition.y
+        };
+
+        targetGroup.rotation.y += deltaMove.x * 0.01;
+        targetGroup.rotation.x += deltaMove.y * 0.01;
+
+        previousMousePosition = { x: clientX, y: clientY };
+      };
+
+      const onMouseUp = () => { isDragging = false; };
+
+      renderer.domElement.addEventListener('mousedown', onMouseDown);
+      renderer.domElement.addEventListener('mousemove', onMouseMove);
+      renderer.domElement.addEventListener('mouseup', onMouseUp);
+      renderer.domElement.addEventListener('touchstart', onMouseDown, { passive: true });
+      renderer.domElement.addEventListener('touchmove', onMouseMove, { passive: true });
+      renderer.domElement.addEventListener('touchend', onMouseUp);
+
+      let step = 0;
+      const animateLoop = () => {
+        instanceObj.animeId = requestAnimationFrame(animateLoop);
+
+        if (!isDragging) {
+          targetGroup.rotation.y += rotationY;
+          targetGroup.rotation.x += rotationX;
+        }
+
+        // Animate wave heights dynamically
+        if (slide.simType === 'wave' && targetGroup.children[0]) {
+          step += 0.05;
+          const positions = targetGroup.children[0].geometry.attributes.position.array;
+          let idx = 0;
+          for (let x = 0; x < 30; x++) {
+            for (let z = 0; z < 30; z++) {
+              positions[idx * 3 + 1] = Math.sin((x * 0.3) + step) * 2 + Math.cos((z * 0.3) + step) * 2;
+              idx++;
+            }
+          }
+          targetGroup.children[0].geometry.attributes.position.needsUpdate = true;
+        }
+
+        renderer.render(scene, camera);
+      };
+
+      animateLoop();
+    }
+
+    function cleanThreeInstance(instanceObj) {
+      if (instanceObj.animeId) {
+        cancelAnimationFrame(instanceObj.animeId);
+        instanceObj.animeId = null;
+      }
+      if (instanceObj.renderer) {
+        instanceObj.renderer.dispose();
+        if (instanceObj.renderer.domElement && instanceObj.renderer.domElement.parentNode) {
+          instanceObj.renderer.domElement.parentNode.removeChild(instanceObj.renderer.domElement);
+        }
+        instanceObj.renderer = null;
+      }
+      instanceObj.scene = null;
+      instanceObj.camera = null;
+      instanceObj.mesh = null;
+    }
+
+    function updateSlideText(field, val) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.slides[appState.activeSlideIdx][field] = val;
+      
+      document.getElementById('save-pill-hud').textContent = "Saving...";
+      saveStateToStorage();
+      setTimeout(() => {
+        document.getElementById('save-pill-hud').textContent = "Autosaved";
+      }, 500);
+      
+      // Update sidebar card without focus loss
+      const thumbStrip = document.getElementById('editor-thumbnail-strip');
+      const textNode = thumbStrip.children[appState.activeSlideIdx].querySelector('div div:last-child');
+      if (textNode) textNode.textContent = val;
+    }
+
+    function updateSlideBullet(bidx, val) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.slides[appState.activeSlideIdx].bulletRows[bidx] = val;
+      saveStateToStorage();
+    }
+
+    function updateSlideTableHeader(hIdx, val) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.slides[appState.activeSlideIdx].tableHeaders[hIdx] = val;
+      saveStateToStorage();
+    }
+
+    function updateSlideTableCell(rIdx, cIdx, val) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.slides[appState.activeSlideIdx].tableRows[rIdx][cIdx] = val;
+      saveStateToStorage();
+    }
+
+    function updateSlideInspectorText(field, val) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.slides[appState.activeSlideIdx][field] = val;
+      saveStateToStorage();
+      refreshSlideWorkspace();
+    }
+
+    function uploadImageBase64(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          updateSlideInspectorText('imageSrc', e.target.result);
+          triggerToast("Base64 Image Uploaded!", "success");
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    // Table rows and columns manipulator
+    function modifySlideTable(action) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const slide = deck.slides[appState.activeSlideIdx];
+
+      if (action === 'add-row') {
+        const newRow = Array(slide.tableHeaders.length).fill('Empty Cell');
+        slide.tableRows.push(newRow);
+        triggerToast("Row Injected", "success");
+      } else if (action === 'del-row') {
+        if (slide.tableRows.length > 1) {
+          slide.tableRows.pop();
+          triggerToast("Row Extracted", "info");
+        }
+      } else if (action === 'add-col') {
+        slide.tableHeaders.push('New Column');
+        slide.tableRows.forEach(row => row.push('Empty Cell'));
+        triggerToast("Column Injected", "success");
+      } else if (action === 'del-col') {
+        if (slide.tableHeaders.length > 1) {
+          slide.tableHeaders.pop();
+          slide.tableRows.forEach(row => row.pop());
+          triggerToast("Column Extracted", "info");
+        }
+      }
+
+      saveStateToStorage();
+      refreshSlideWorkspace();
+    }
+
+    function changeActiveSlideLayout(layout) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const slide = deck.slides[appState.activeSlideIdx];
+      slide.layout = layout;
+      
+      // Setup default properties based on selected layout preset
+      if (layout === 'split') {
+        slide.leftColTitle = 'Platform Logic';
+        slide.leftColBody = 'Direct component-level states synced to layout grids.';
+        slide.rightColTitle = 'Render Matrix';
+        slide.rightColBody = 'GPU graphics pipeline running clean and lightweight wrappers.';
+      } else if (layout === 'features') {
+        slide.bulletRows = ['Dynamic DOM state rendering', 'Integrated custom presentation tools'];
+      } else if (layout === 'minimal') {
+        slide.codeblock = '// Quick script code integration\nconst data = Decker.track();';
+      } else if (layout === 'image') {
+        slide.imageSrc = CORE_PRESETS.image.imageSrc;
+        slide.imageCaption = CORE_PRESETS.image.imageCaption;
+      } else if (layout === 'video') {
+        slide.videoSrc = CORE_PRESETS.video.videoSrc;
+      } else if (layout === 'table') {
+        slide.tableHeaders = [...CORE_PRESETS.table.tableHeaders];
+        slide.tableRows = JSON.parse(JSON.stringify(CORE_PRESETS.table.tableRows));
+      } else if (layout === 'chart') {
+        slide.chartType = CORE_PRESETS.chart.chartType;
+        slide.chartLabels = CORE_PRESETS.chart.chartLabels;
+        slide.chartData = CORE_PRESETS.chart.chartData;
+      } else if (layout === 'simulation') {
+        slide.simType = CORE_PRESETS.simulation.simType;
+      }
+
+      saveStateToStorage();
+      refreshSlideWorkspace();
+      refreshEditorSidebar();
+    }
+
+    function updateSlideBackground(bg, text) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.slides[appState.activeSlideIdx].background = bg;
+      deck.slides[appState.activeSlideIdx].textColor = text;
+      
+      saveStateToStorage();
+      refreshSlideWorkspace();
+      refreshEditorSidebar();
+    }
+
+    function updateSlideFontFamily(font) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.slides[appState.activeSlideIdx].fontFamily = font;
+      
+      saveStateToStorage();
+      refreshSlideWorkspace();
+      refreshEditorSidebar();
+    }
+
+    function updateSlideFontScale(scale) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.slides[appState.activeSlideIdx].fontSizeScale = scale;
+      
+      saveStateToStorage();
+      refreshSlideWorkspace();
+      refreshEditorSidebar();
+    }
+
+    function updateSlideAlignment(align) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.slides[appState.activeSlideIdx].align = align;
+      
+      saveStateToStorage();
+      refreshSlideWorkspace();
+    }
+
+    function injectInteractiveWidget(type) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const slide = deck.slides[appState.activeSlideIdx];
+
+      if (type === 'bullet') {
+        if (!slide.bulletRows) slide.bulletRows = [];
+        slide.bulletRows.push('Fresh dynamic bullet row widget injected');
+      } else if (type === 'highlight') {
+        slide.highlightText = 'Highlighted banner text added. Press play to view layout!';
+      } else if (type === 'code') {
+        slide.codeblock = 'const model = new DeckerEngine();\nmodel.start();';
+      }
+
+      saveStateToStorage();
+      refreshSlideWorkspace();
+    }
+
+    function addNewSlide(layoutPreset = 'title') {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const newSlide = {
+        ...CORE_PRESETS[layoutPreset],
+        title: 'New Workspace Slide',
+        subtitle: 'Double click structural blocks to customize element layers.'
+      };
+      
+      deck.slides.splice(appState.activeSlideIdx + 1, 0, newSlide);
+      appState.activeSlideIdx += 1;
+      
+      saveStateToStorage();
+      refreshEditorSidebar();
+      refreshSlideWorkspace();
+    }
+
+    function duplicateActiveSlide() {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const activeSlide = deck.slides[appState.activeSlideIdx];
+      const copy = JSON.parse(JSON.stringify(activeSlide));
+      
+      deck.slides.splice(appState.activeSlideIdx + 1, 0, copy);
+      appState.activeSlideIdx += 1;
+      
+      saveStateToStorage();
+      refreshEditorSidebar();
+      refreshSlideWorkspace();
+    }
+
+    function deleteActiveSlide() {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      if (deck.slides.length <= 1) {
+        triggerToast("A presentation deck must have at least one slide.", "warning");
+        return;
+      }
+      
+      triggerConfirm(
+        "Delete slide?",
+        "Erase this slide from the presentation structure?",
+        () => {
+          deck.slides.splice(appState.activeSlideIdx, 1);
+          appState.activeSlideIdx = Math.max(0, appState.activeSlideIdx - 1);
+          
+          saveStateToStorage();
+          refreshEditorSidebar();
+          refreshSlideWorkspace();
+          triggerToast("Slide deleted", "info");
+        }
+      );
+    }
+
+    function deleteSlideInSidebar(idx, event) {
+      event.stopPropagation();
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      if (deck.slides.length <= 1) {
+        triggerToast("A presentation deck must have at least one slide.", "warning");
+        return;
+      }
+      
+      triggerConfirm(
+        "Delete slide?",
+        "Erase this slide from the presentation structure?",
+        () => {
+          deck.slides.splice(idx, 1);
+          appState.activeSlideIdx = Math.max(0, appState.activeSlideIdx - 1);
+          
+          saveStateToStorage();
+          refreshEditorSidebar();
+          refreshSlideWorkspace();
+          triggerToast("Slide deleted", "info");
+        }
+      );
+    }
+
+    function syncDeckMetaData() {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      deck.title = document.getElementById('deck-title-field').value;
+      deck.updatedAt = new Date().toLocaleString();
+      saveStateToStorage();
+    }
+
+    function downloadBackupJSON() {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(deck, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `${deck.title.replace(/\s+/g, '_')}_backup.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    // High fidelity PPTX and PDF exporter
+    async function exportPresentation(format) {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      if (!deck || !deck.slides || deck.slides.length === 0) {
+        triggerToast("No slides in presentation.", "warning");
+        return;
+      }
+
+      // Visual progress feedback on the save indicator
+      const savePill = document.getElementById('save-pill-hud');
+      const originalText = savePill.textContent;
+      savePill.textContent = "Compiling elements...";
+      savePill.className = "text-xs text-white bg-amber-500 px-2.5 py-0.5 rounded font-mono select-none animate-pulse";
+
+      try {
+        // Build a temporary, fixed-size offscreen rendering viewport
+        const offscreenViewport = document.createElement('div');
+        offscreenViewport.style.position = 'fixed';
+        offscreenViewport.style.top = '-9999px';
+        offscreenViewport.style.left = '-9999px';
+        offscreenViewport.style.width = '1280px';
+        offscreenViewport.style.height = '720px';
+        offscreenViewport.style.overflow = 'hidden';
+        document.body.appendChild(offscreenViewport);
+
+        let pdfInstance = null;
+        let pptxInstance = null;
+
+        if (format === 'pdf') {
+          const { jsPDF } = window.jspdf;
+          pdfInstance = new jsPDF({
+            orientation: 'landscape',
+            unit: 'px',
+            format: [1280, 720]
+          });
+        } else if (format === 'pptx') {
+          pptxInstance = new PptxGenJS();
+          pptxInstance.layout = 'LAYOUT_16x9';
+        }
+
+        // Loop through slides sequentially
+        for (let idx = 0; idx < deck.slides.length; idx++) {
+          savePill.textContent = `Rendering Slide ${idx + 1}/${deck.slides.length}...`;
+          const slide = deck.slides[idx];
+
+          offscreenViewport.innerHTML = '';
+          offscreenViewport.style.backgroundColor = slide.background;
+          offscreenViewport.style.color = slide.textColor;
+          offscreenViewport.style.textAlign = slide.align || 'left';
+          offscreenViewport.style.display = 'flex';
+          offscreenViewport.style.flexDirection = 'column';
+          offscreenViewport.style.justifyContent = 'center';
+          offscreenViewport.style.padding = '80px';
+          offscreenViewport.style.boxSizing = 'border-box';
+
+          const fontClass = slide.fontFamily === 'serif' ? 'font-serif' : slide.fontFamily === 'mono' ? 'font-mono' : 'font-sans';
+          const scaleMultiplier = parseInt(slide.fontSizeScale || '100') / 100;
+          offscreenViewport.className = `slide-canvas-ratio ${fontClass}`;
+          offscreenViewport.style.fontSize = `${16 * scaleMultiplier}px`;
+
+          let templateContent = '';
+
+          if (slide.layout === 'split') {
+            templateContent = `
+              <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <h2 style="font-size: 2.85rem; font-weight: 800; margin-bottom: 8px; line-height: 1.2;">${slide.title}</h2>
+                  <p style="font-size: 1.15rem; color: #94a3b8;">${slide.subtitle}</p>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 16px;">
+                  <div style="padding: 24px; background: rgba(0,0,0,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                    <h3 style="font-size: 1.25rem; color: #f59e0b; text-transform: uppercase; font-weight: 700; margin-bottom: 12px;">${slide.leftColTitle || 'Left Segment'}</h3>
+                    <p style="font-size: 1.05rem; color: #94a3b8; line-height: 1.6;">${slide.leftColBody || ''}</p>
+                  </div>
+                  <div style="padding: 24px; background: rgba(0,0,0,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                    <h3 style="font-size: 1.25rem; color: #f59e0b; text-transform: uppercase; font-weight: 700; margin-bottom: 12px;">${slide.rightColTitle || 'Right Segment'}</h3>
+                    <p style="font-size: 1.05rem; color: #94a3b8; line-height: 1.6;">${slide.rightColBody || ''}</p>
+                  </div>
+                </div>
+              </div>
+            `;
+          } else if (slide.layout === 'features') {
+            let rowBuilder = '';
+            slide.bulletRows.forEach((row) => {
+              rowBuilder += `
+                <div style="display: flex; align-items: start; gap: 16px; font-size: 1.25rem; margin-bottom: 14px; text-align: left;">
+                  <span style="color: #f59e0b; font-weight: bold;">✓</span>
+                  <p style="color: #94a3b8; line-height: 1.5; flex: 1; margin: 0;">${row}</p>
+                </div>
+              `;
+            });
+
+            templateContent = `
+              <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <h2 style="font-size: 3.25rem; font-weight: 900; margin-bottom: 8px; line-height: 1.1;">${slide.title}</h2>
+                  <p style="font-size: 1.15rem; color: #94a3b8;">${slide.subtitle}</p>
+                </div>
+                <div style="margin-bottom: 32px;">
+                  ${rowBuilder}
+                </div>
+                ${slide.highlightText ? `
+                  <div style="padding: 16px; background: rgba(250, 204, 21, 0.08); border: 1px solid rgba(250, 204, 21, 0.2); color: #eab308; border-radius: 6px; font-weight: bold; font-size: 1.05rem; text-align: center;">
+                    ${slide.highlightText}
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          } else if (slide.layout === 'minimal') {
+            templateContent = `
+              <div style="max-width: 900px; margin: 0 auto; width: 100%;">
+                <h2 style="font-size: 2.5rem; font-style: italic; margin-bottom: 20px; line-height: 1.3;">"${slide.title}"</h2>
+                <p style="font-size: 1.2rem; color: #94a3b8; margin-bottom: 32px;">${slide.subtitle}</p>
+                ${slide.codeblock ? `
+                  <div style="padding: 24px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-family: monospace; font-size: 1.05rem; color: #34d399; white-space: pre-wrap; text-align: left; line-height: 1.5;">
+                    ${slide.codeblock.replace(/\n/g, '<br>')}
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          } else if (slide.layout === 'image') {
+            templateContent = `
+              <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between; align-items: center;">
+                <div>
+                  <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 4px;">${slide.title}</h2>
+                  <p style="font-size: 1rem; color: #94a3b8;">${slide.subtitle}</p>
+                </div>
+                <div style="flex: 1; display: flex; items-align: center; justify-content: center; padding: 20px;">
+                  <img src="${slide.imageSrc}" style="max-height: 320px; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                </div>
+                <p style="font-size: 0.95rem; font-style: italic; color: #94a3b8;">${slide.imageCaption || ''}</p>
+              </div>
+            `;
+          } else if (slide.layout === 'video') {
+            templateContent = `
+              <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between; align-items: center;">
+                <div>
+                  <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 4px;">${slide.title}</h2>
+                  <p style="font-size: 1rem; color: #94a3b8;">${slide.subtitle}</p>
+                </div>
+                <div style="flex: 1; width: 100%; max-width: 500px; aspect-ratio: 16/9; background: #000; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white;">
+                  <p style="font-size: 1.25rem;">[Media Video Element Embedded]</p>
+                </div>
+              </div>
+            `;
+          } else if (slide.layout === 'table') {
+            let headersHtml = '';
+            slide.tableHeaders.forEach(th => {
+              headersHtml += `<th style="padding: 14px; background: #e2e8f0; color: #1e293b; font-size: 1.15rem; font-weight: bold; border: 1px solid #cbd5e1; text-align: left;">${th}</th>`;
+            });
+            let rowsHtml = '';
+            slide.tableRows.forEach(row => {
+              rowsHtml += '<tr>';
+              row.forEach(cell => {
+                rowsHtml += `<td style="padding: 12px; border: 1px solid #cbd5e1; font-size: 1.05rem;">${cell}</td>`;
+              });
+              rowsHtml += '</tr>';
+            });
+
+            templateContent = `
+              <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 4px;">${slide.title}</h2>
+                  <p style="font-size: 1rem; color: #94a3b8; margin-bottom: 24px;">${slide.subtitle}</p>
+                </div>
+                <div style="flex: 1; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; background: white;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <thead><tr>${headersHtml}</tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                  </table>
+                </div>
+              </div>
+            `;
+          } else if (slide.layout === 'chart') {
+            templateContent = `
+              <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between; align-items: center;">
+                <div>
+                  <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 4px;">${slide.title}</h2>
+                  <p style="font-size: 1rem; color: #94a3b8; margin-bottom: 16px;">${slide.subtitle}</p>
+                </div>
+                <div style="flex: 1; width: 100%; max-width: 650px; display: flex; align-items: center; justify-content: center; position: relative;">
+                  <canvas id="offscreen-chart-${idx}" style="max-height: 300px;"></canvas>
+                </div>
+              </div>
+            `;
+          } else if (slide.layout === 'simulation') {
+            templateContent = `
+              <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between; align-items: center;">
+                <div>
+                  <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 4px;">${slide.title}</h2>
+                  <p style="font-size: 1rem; color: #94a3b8; margin-bottom: 16px;">${slide.subtitle}</p>
+                </div>
+                <div style="flex: 1; width: 100%; max-width: 600px; aspect-ratio: 16/9; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #050811;">
+                  <p style="font-size: 1.25rem; color: #38bdf8;">[Interactive 3D WebGL Simulation Rendered]</p>
+                </div>
+              </div>
+            `;
+          } else {
+            // Title slide
+            templateContent = `
+              <div style="max-width: 900px; margin: 0 auto;">
+                <h1 style="font-size: 4rem; font-weight: 900; line-height: 1.15; margin-bottom: 20px; letter-spacing: -0.025em;">${slide.title}</h1>
+                <p style="font-size: 1.5rem; color: #94a3b8; line-height: 1.6; max-width: 700px; margin: 0 auto;">${slide.subtitle}</p>
+              </div>
+            `;
+          }
+
+          offscreenViewport.innerHTML = templateContent;
+
+          // Render Chart inside offscreen DOM before capturing image
+          if (slide.layout === 'chart') {
+            await new Promise(resolve => setTimeout(resolve, 50));
+            buildSlideChart(`offscreen-chart-${idx}`, slide, 'tempChartInstance');
+          }
+
+          // Delay to make sure layout nodes render correctly
+          await new Promise(resolve => setTimeout(resolve, 150));
+
+          const capturedCanvas = await html2canvas(offscreenViewport, {
+            width: 1280,
+            height: 720,
+            scale: 2, 
+            logging: false,
+            useCORS: true
+          });
+
+          const renderedImageData = capturedCanvas.toDataURL('image/png');
+
+          if (format === 'pdf') {
+            if (idx > 0) pdfInstance.addPage([1280, 720], 'landscape');
+            pdfInstance.addImage(renderedImageData, 'PNG', 0, 0, 1280, 720);
+          } else if (format === 'pptx') {
+            let pptxSlide = pptxInstance.addSlide();
+            pptxSlide.background = { color: slide.background };
+            pptxSlide.addImage({
+              data: renderedImageData,
+              x: 0,
+              y: 0,
+              w: '100%',
+              h: '100%'
+            });
+          }
+        }
+
+        document.body.removeChild(offscreenViewport);
+
+        // Save generated presentation
+        if (format === 'pdf') {
+          pdfInstance.save(`${deck.title.replace(/\s+/g, '_')}.pdf`);
+        } else if (format === 'pptx') {
+          pptxInstance.writeFile({ fileName: `${deck.title.replace(/\s+/g, '_')}.pptx` });
+        }
+
+        savePill.textContent = "Saved";
+        savePill.className = "text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded font-mono select-none";
+        setTimeout(() => {
+          savePill.textContent = "Autosaved";
+        }, 1500);
+
+        triggerToast("Export completed successfully!", "success");
+
+      } catch (err) {
+        console.error("Presentation file compilation failed:", err);
+        triggerToast("Compilation error, export aborted: " + err.message, "error");
+        savePill.textContent = originalText;
+        savePill.className = "text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded font-mono select-none";
+      }
+    }
+
+
+    // ==================== PRESENTATION PLAYBACK SYSTEM ====================
+    function launchSlideshow() {
+      appState.playbackSlideIdx = appState.activeSlideIdx;
+      appState.laserEnabled = false;
+      appState.spotlightEnabled = false;
+
+      // Toggle Active States in presenting views
+      document.getElementById('view-playback').classList.replace('hidden', 'block');
+      
+      renderPlaybackSlide();
+    }
+
+    function exitPlayback() {
+      cleanThreeInstance(activePlaybackThree);
+      document.getElementById('view-playback').classList.replace('block', 'hidden');
+      
+      // Cleanup pointer artifacts
+      document.getElementById('laser-dot-system').style.display = 'none';
+      document.getElementById('spotlight-mask-panel').style.display = 'none';
+    }
+
+    function renderPlaybackSlide() {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      const slide = deck.slides[appState.playbackSlideIdx];
+      const holder = document.getElementById('playback-slide-holder');
+
+      // Sync indices indicators
+      document.getElementById('playback-index-hud').textContent = `Slide ${appState.playbackSlideIdx + 1} of ${deck.slides.length}`;
+
+      // Reset styles according to configurations
+      holder.style.backgroundColor = slide.background;
+      holder.style.color = slide.textColor;
+      holder.style.textAlign = slide.align || 'left';
+      
+      const fontClass = slide.fontFamily === 'serif' ? 'font-serif' : slide.fontFamily === 'mono' ? 'font-mono' : 'font-sans';
+      const scaleClass = `scale-font-${slide.fontSizeScale || '100'}`;
+      holder.className = `slide-canvas-ratio w-full max-w-5xl p-16 flex flex-col justify-center border border-slate-900 shadow-2xl relative transition-transform duration-300 scale-100 overflow-hidden ${fontClass} ${scaleClass}`;
+
+      let contentHtml = '';
+
+      if (slide.layout === 'split') {
+        contentHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-6">
+            <div>
+              <h2 class="text-4xl font-extrabold">${slide.title}</h2>
+              <p class="text-sm text-slate-400 mt-2">${slide.subtitle}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-8 text-left">
+              <div class="p-6 bg-white/5 rounded-xl border border-slate-500/10 backdrop-blur-sm">
+                <h3 class="text-base font-bold uppercase tracking-wider text-amber-400">${slide.leftColTitle || 'Left Segment'}</h3>
+                <p class="text-sm text-slate-300 mt-3 leading-relaxed">${slide.leftColBody || ''}</p>
+              </div>
+              <div class="p-6 bg-white/5 rounded-xl border border-slate-500/10 backdrop-blur-sm">
+                <h3 class="text-base font-bold uppercase tracking-wider text-amber-400">${slide.rightColTitle || 'Right Segment'}</h3>
+                <p class="text-sm text-slate-300 mt-3 leading-relaxed">${slide.rightColBody || ''}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'features') {
+        let bullets = '';
+        slide.bulletRows.forEach(b => {
+          bullets += `
+            <div class="flex items-start gap-3.5 text-base text-slate-300">
+              <span class="text-amber-400 font-bold mt-0.5"><i class="fa-solid fa-circle-check"></i></span>
+              <p class="leading-relaxed">${b}</p>
+            </div>
+          `;
+        });
+
+        contentHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-6">
+            <div>
+              <h2 class="text-5xl font-black">${slide.title}</h2>
+              <p class="text-sm text-slate-400 mt-2">${slide.subtitle}</p>
+            </div>
+            <div class="space-y-3 max-w-2xl text-left">
+              ${bullets}
+            </div>
+            ${slide.highlightText ? `
+              <div class="p-4 bg-amber-400/15 border border-amber-400/20 text-xs font-bold text-amber-400 rounded-xl text-center">
+                <i class="fa-solid fa-star mr-1"></i> ${slide.highlightText}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else if (slide.layout === 'minimal') {
+        contentHtml = `
+          <div class="space-y-6 max-w-3xl mx-auto w-full">
+            <h2 class="text-3xl font-serif italic text-slate-100">"${slide.title}"</h2>
+            <p class="text-sm text-slate-400">${slide.subtitle}</p>
+            ${slide.codeblock ? `
+              <div class="p-6 bg-black/70 rounded-xl text-left text-xs font-mono text-emerald-400 border border-slate-800 overflow-x-auto whitespace-pre">
+                ${slide.codeblock}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else if (slide.layout === 'image') {
+        contentHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-4 text-center">
+            <div>
+              <h2 class="text-4xl font-extrabold">${slide.title}</h2>
+              <p class="text-sm text-slate-400 mt-1">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 flex items-center justify-center overflow-hidden py-2">
+              <img src="${slide.imageSrc}" class="max-h-[300px] object-contain rounded-xl shadow-2xl border border-slate-700/20">
+            </div>
+            <p class="text-xs italic text-slate-400">${slide.imageCaption || ''}</p>
+          </div>
+        `;
+      } else if (slide.layout === 'video') {
+        const isYT = slide.videoSrc.includes('youtube.com') || slide.videoSrc.includes('youtu.be');
+        let ytId = '';
+        if (isYT) {
+          const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+          const match = slide.videoSrc.match(regExp);
+          ytId = (match && match[2].length === 11) ? match[2] : '';
+        }
+
+        contentHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-4 text-center">
+            <div>
+              <h2 class="text-4xl font-extrabold">${slide.title}</h2>
+              <p class="text-sm text-slate-400 mt-1">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 flex items-center justify-center py-2">
+              <div class="w-full max-w-[600px] aspect-video bg-black rounded-xl overflow-hidden relative shadow-2xl border border-slate-800">
+                ${isYT && ytId ? `
+                  <iframe class="absolute inset-0 w-full h-full" src="https://www.youtube.com/embed/${ytId}?autoplay=1" frameborder="0" allowfullscreen allow="autoplay"></iframe>
+                ` : `
+                  <video class="absolute inset-0 w-full h-full object-contain" src="${slide.videoSrc}" controls autoplay loop></video>
+                `}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'table') {
+        let headersHtml = '';
+        slide.tableHeaders.forEach(th => {
+          headersHtml += `<th class="px-5 py-3 bg-slate-100 text-xs font-bold text-slate-700 border border-slate-300 text-left">${th}</th>`;
+        });
+        let rowsHtml = '';
+        slide.tableRows.forEach(row => {
+          rowsHtml += '<tr>';
+          row.forEach(cell => {
+            rowsHtml += `<td class="px-5 py-2.5 text-xs text-slate-600 border border-slate-300">${cell}</td>`;
+          });
+          rowsHtml += '</tr>';
+        });
+
+        contentHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-6">
+            <div>
+              <h2 class="text-4xl font-extrabold">${slide.title}</h2>
+              <p class="text-sm text-slate-400 mt-2">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 overflow-auto max-h-[280px] bg-white rounded-xl border border-slate-300 shadow-lg">
+              <table class="w-full border-collapse">
+                <thead><tr>${headersHtml}</tr></thead>
+                <tbody>${rowsHtml}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'chart') {
+        contentHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-4 text-center">
+            <div>
+              <h2 class="text-4xl font-extrabold">${slide.title}</h2>
+              <p class="text-sm text-slate-400 mt-1">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 flex items-center justify-center max-h-[300px] relative py-2">
+              <canvas id="playback-chart-canvas" class="max-w-[650px] max-h-[260px]"></canvas>
+            </div>
+          </div>
+        `;
+      } else if (slide.layout === 'simulation') {
+        contentHtml = `
+          <div class="w-full flex flex-col h-full justify-between gap-2 text-center relative" style="height:100%">
+            <div class="space-y-1 z-10">
+              <h2 class="text-4xl font-extrabold">${slide.title}</h2>
+              <p class="text-sm text-slate-400 mt-1">${slide.subtitle}</p>
+            </div>
+            <div class="flex-1 rounded-xl overflow-hidden relative flex items-center justify-center bg-[#050811] border border-slate-300/10 simulation-canvas-container" id="playback-three-container">
+              <!-- Playback ThreeJS canvas -->
+            </div>
+          </div>
+        `;
+      } else {
+        contentHtml = `
+          <div class="space-y-6 max-w-3xl mx-auto">
+            <h1 class="text-6xl font-black tracking-tight leading-tight">${slide.title}</h1>
+            <p class="text-lg text-slate-400 max-w-xl mx-auto leading-relaxed">${slide.subtitle}</p>
+          </div>
+        `;
+      }
+
+      holder.innerHTML = contentHtml;
+
+      // Render chart inside presentation mode
+      if (slide.layout === 'chart') {
+        setTimeout(() => buildSlideChart('playback-chart-canvas', slide, 'activePlaybackChart'), 50);
+      }
+      // Render WebGL simulation inside presentation mode
+      if (slide.layout === 'simulation') {
+        setTimeout(() => buildSlideSimulation('playback-three-container', slide, activePlaybackThree), 50);
+      }
+    }
+
+    function nextPlaybackSlide() {
+      const deck = appState.decks.find(d => d.id === appState.activeDeckId);
+      if (appState.playbackSlideIdx < deck.slides.length - 1) {
+        cleanThreeInstance(activePlaybackThree);
+        appState.playbackSlideIdx++;
+        renderPlaybackSlide();
+      }
+    }
+
+    function prevPlaybackSlide() {
+      if (appState.playbackSlideIdx > 0) {
+        cleanThreeInstance(activePlaybackThree);
+        appState.playbackSlideIdx--;
+        renderPlaybackSlide();
+      }
+    }
+
+    // Highlight Tool System Functions (Laser, Spotlight Masking)
+    function toggleLaserPointer() {
+      appState.laserEnabled = !appState.laserEnabled;
+      const btn = document.getElementById('btn-toggle-laser');
+      const dot = document.getElementById('laser-dot-system');
+
+      if (appState.laserEnabled) {
+        btn.classList.add('bg-red-600', 'text-white', 'hover:bg-red-700');
+        dot.style.display = 'block';
+      } else {
+        btn.classList.remove('bg-red-600', 'text-white', 'hover:bg-red-700');
+        dot.style.display = 'none';
+      }
+    }
+
+    function toggleSpotlightMode() {
+      appState.spotlightEnabled = !appState.spotlightEnabled;
+      const btn = document.getElementById('btn-toggle-spotlight');
+      const mask = document.getElementById('spotlight-mask-panel');
+
+      if (appState.spotlightEnabled) {
+        btn.classList.add('bg-amber-500', 'text-slate-900', 'hover:bg-amber-600');
+        mask.style.display = 'block';
+      } else {
+        btn.classList.remove('bg-amber-500', 'text-slate-900', 'hover:bg-amber-600');
+        mask.style.display = 'none';
+      }
+    }
+
+    // Coordinate Vector tracking during presentations
+    window.addEventListener('mousemove', (e) => {
+      const isPlayback = document.getElementById('view-playback').classList.contains('block');
+      if (!isPlayback) return;
+
+      if (appState.laserEnabled) {
+        const laser = document.getElementById('laser-dot-system');
+        laser.style.left = `${e.clientX}px`;
+        laser.style.top = `${e.clientY}px`;
+      }
+
+      if (appState.spotlightEnabled) {
+        const mask = document.getElementById('spotlight-mask-panel');
+        requestAnimationFrame(() => {
+          mask.style.background = `radial-gradient(circle 140px at ${e.clientX}px ${e.clientY}px, transparent 100%, rgba(10, 10, 12, 0.9) 100%)`;
+        });
+      }
+    });
+
+    // Keyboard bindings inside dashboard and presentation models
+    window.addEventListener('keydown', (e) => {
+      const isPlayback = document.getElementById('view-playback').classList.contains('block');
+      if (!isPlayback) return;
+
+      switch(e.key) {
+        case 'Escape':
+          exitPlayback();
+          break;
+        case 'ArrowRight':
+        case ' ':
+          nextPlaybackSlide();
+          break;
+        case 'ArrowLeft':
+          prevPlaybackSlide();
+          break;
+        case 'l':
+        case 'L':
+          toggleLaserPointer();
+          break;
+        case 's':
+        case 'S':
+          toggleSpotlightMode();
+          break;
+      }
+    });
+
+    // Escape character filter
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+  </script>
+</body>
+</html>
